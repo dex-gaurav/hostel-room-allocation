@@ -117,7 +117,7 @@ public class HostelManager {
         String message = "Student record updated successfully.";
         // Check if the gender modification invalidates the current room assignment
         if (oldRoom != null && !canStudentStayInRoom(student, oldRoom)) {
-            releaseCurrentRoom(student);
+            oldRoom.setCurrentOccupancy(oldRoom.getCurrentOccupancy() - 1);
             student.setRoomNumber("");
             waitingQueue.remove(student.getStudentId());
             
@@ -141,7 +141,10 @@ public class HostelManager {
         Student student = findStudent(studentId);
         if (student == null) return "Student record was not found.";
         
-        Room oldRoom = releaseCurrentRoom(student);
+        Room oldRoom = findRoom(student.getRoomNumber());
+        if (oldRoom != null) {
+            oldRoom.setCurrentOccupancy(oldRoom.getCurrentOccupancy() - 1);
+        }
         waitingQueue.remove(student.getStudentId());
         students.remove(student);
         
@@ -262,11 +265,16 @@ public class HostelManager {
         }
 
         // Process standard relocation
-        if (hasRoom(student)) {
-            releaseCurrentRoom(student);
+        if (hasRoom(student) && oldRoom != null) {
+            oldRoom.setCurrentOccupancy(oldRoom.getCurrentOccupancy() - 1);
         }
+        waitingQueue.remove(student.getStudentId());
         String bedNumber = allocateStudentToRoom(student, room);
-        return finalizeAllocation(student, bedNumber, oldBed);
+        saveData();
+        if (oldBed != null && !oldBed.isEmpty()) {
+            return "Student moved from " + oldBed + " to " + bedNumber + ".";
+        }
+        return "Bed " + bedNumber + " allocated successfully.";
     }
 
     /**
@@ -297,14 +305,20 @@ public class HostelManager {
 
         // Adjust room occupancy levels based on movement direction
         Room oldRoom = findRoom(oldBed);
-        if (oldRoom == null) {
+        if (oldRoom != null && !oldRoom.getRoomNumber().equalsIgnoreCase(room.getRoomNumber())) {
+            oldRoom.setCurrentOccupancy(oldRoom.getCurrentOccupancy() - 1);
             room.setCurrentOccupancy(room.getCurrentOccupancy() + 1);
-        } else if (!oldRoom.getRoomNumber().equalsIgnoreCase(room.getRoomNumber())) {
-            releaseCurrentRoom(student);
+        } else if (oldRoom == null) {
             room.setCurrentOccupancy(room.getCurrentOccupancy() + 1);
         }
 
-        return finalizeAllocation(student, newBed, oldBed);
+        waitingQueue.remove(student.getStudentId());
+        student.setRoomNumber(newBed);
+        saveData();
+        if (oldBed != null && !oldBed.isEmpty()) {
+            return "Student moved from " + oldBed + " to " + newBed + ".";
+        }
+        return "Bed " + newBed + " allocated successfully.";
     }
 
     /**
@@ -317,8 +331,11 @@ public class HostelManager {
     public String checkoutStudent(Student student) {
         if (student == null) return "Please select a student.";
         if (!hasRoom(student)) return "This student does not have an allocated room.";
-        Room room = releaseCurrentRoom(student);
+        Room room = findRoom(student.getRoomNumber());
         String freedBed = student.getRoomNumber();
+        if (room != null) {
+            room.setCurrentOccupancy(room.getCurrentOccupancy() - 1);
+        }
         
         // Remove student records
         students.remove(student);
@@ -753,40 +770,6 @@ public class HostelManager {
         if (room.getCapacity() < 1) room.setCapacity(4);
         if (room.getCapacity() > 4) room.setCapacity(4);
         if (room.getCurrentOccupancy() < 0) room.setCurrentOccupancy(0);
-    }
-
-    /**
-     * Decrements the occupancy of the room currently assigned to the student (if any).
-     * Reduces duplicate room deallocation code across various operations.
-     *
-     * @param student The resident student
-     * @return The Room object that was freed, or null if none
-     */
-    private Room releaseCurrentRoom(Student student) {
-        Room room = findRoom(student.getRoomNumber());
-        if (room != null) {
-            room.setCurrentOccupancy(room.getCurrentOccupancy() - 1);
-        }
-        return room;
-    }
-
-    /**
-     * Finalizes the allocation by setting the bed number, removing the student from the waiting list,
-     * saving the data, and returning the standardized success message.
-     *
-     * @param student The student being allocated
-     * @param newBed  The fully qualified bed code assigned
-     * @param oldBed  The student's previous bed code (if any)
-     * @return Standardized success message detailing allocation or move
-     */
-    private String finalizeAllocation(Student student, String newBed, String oldBed) {
-        student.setRoomNumber(newBed);
-        waitingQueue.remove(student.getStudentId());
-        saveData();
-        if (oldBed != null && !oldBed.isEmpty()) {
-            return "Student moved from " + oldBed + " to " + newBed + ".";
-        }
-        return "Bed " + newBed + " allocated successfully.";
     }
 }
 
