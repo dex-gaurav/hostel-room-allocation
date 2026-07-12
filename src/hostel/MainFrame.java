@@ -39,16 +39,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * MainFrame handles the entire graphical user interface (GUI) of the Hostel Room Allocation System.
- * It extends JFrame and manages two main visual modes:
- * 1. The Login screen.
- * 2. The Main application dashboard containing a navigation sidebar and a dynamic content pane.
- * It uses layout managers (BorderLayout, GridBagLayout, CardLayout, FlowLayout, GridLayout)
- * to create a responsive, modern interface.
- */
+// Main application window.
+// Demonstrates Swing components, custom painting, layouts, and event listeners.
+// Integrates with HostelManager for room allocation logic.
 public class MainFrame extends JFrame {
-    // UI Style Palettes and Color Tokens (using curated blue/neutral shades)
     private static final Color BLUE = new Color(37, 99, 235);
     private static final Color DARK_BLUE = new Color(30, 64, 175);
     private static final Color SIDEBAR = new Color(20, 35, 61);
@@ -57,21 +51,15 @@ public class MainFrame extends JFrame {
     private static final Color MUTED = new Color(107, 114, 128);
     private static final Color BORDER = new Color(226, 232, 240);
     
-    // Typography settings for consistency across screens
     private static final Font NORMAL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private static final Font HEADING_FONT = new Font("Segoe UI", Font.BOLD, 26);
 
-    // Business controller, central panel switcher, and navigation button cache
     private HostelManager manager;
     private JPanel contentPanel;
     private Map<String, JButton> menuButtons;
 
-    /**
-     * Constructor builds the mainframe shell, caches menu buttons,
-     * and shows the initial Login screen.
-     *
-     * @param manager Central HostelManager controller instance
-     */
+    // Configures main window constraints (title, close operation, bounds).
+    // Displays the initial Login view and links the shared HostelManager controller.
     public MainFrame(HostelManager manager) {
         this.manager = manager;
         this.menuButtons = new LinkedHashMap<String, JButton>();
@@ -79,30 +67,24 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1240, 760);
         setMinimumSize(new Dimension(1000, 650));
-        setLocationRelativeTo(null); // Center window on screen
+        setLocationRelativeTo(null);
         showLogin();
     }
 
-    // ==========================================
-    // Screen Layout / View Controllers
-    // ==========================================
-
-    /**
-     * Configures the window size and constructs the Login Form screen.
-     * Validates credentials (admin / admin123) and redirects to the main application interface.
-     */
+    // Builds the Login UI using BorderLayout + GridBagLayout.
+    // Handles admin authentication before opening the main workspace.
     private void showLogin() {
         setSize(920, 590);
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BACKGROUND);
 
-        // Left Brand Panel: displays the logo and name
         JPanel brandPanel = new JPanel(new GridBagLayout());
         brandPanel.setPreferredSize(new Dimension(390, 0));
         brandPanel.setBackground(SIDEBAR);
         GridBagConstraints brand = new GridBagConstraints();
         brand.gridx = 0;
         brand.insets = new Insets(8, 25, 8, 25);
+        
         brand.gridy = 0;
         brandPanel.add(new JLabel(new ImageIcon("resources/logo.png")), brand);
         
@@ -118,7 +100,6 @@ public class MainFrame extends JFrame {
         brand.gridy = 2;
         brandPanel.add(subtitle, brand);
 
-        // Right Credentials Form
         final JTextField usernameField = new JTextField();
         final JPasswordField passwordField = new JPasswordField();
         styleInput(usernameField);
@@ -131,16 +112,15 @@ public class MainFrame extends JFrame {
         form.gridx = 0;
         form.fill = GridBagConstraints.HORIZONTAL;
         form.weightx = 1;
-        form.insets = new Insets(6, 12, 6, 12);
         
         JLabel loginTitle = new JLabel("Welcome back");
         loginTitle.setFont(new Font("Segoe UI", Font.BOLD, 27));
         loginTitle.setForeground(TEXT);
         form.gridy = 0;
+        form.insets = new Insets(6, 12, 6, 12);
         loginCard.add(loginTitle, form);
         
-        JLabel loginText = new JLabel("Sign in to manage hostel rooms");
-        loginText.setForeground(MUTED);
+        JLabel loginText = muted("Sign in to manage hostel rooms");
         form.gridy = 1;
         form.insets = new Insets(0, 12, 20, 12);
         loginCard.add(loginText, form);
@@ -148,11 +128,13 @@ public class MainFrame extends JFrame {
         form.insets = new Insets(6, 12, 6, 12);
         form.gridy = 2;
         loginCard.add(new JLabel("Username"), form);
+        
         form.gridy = 3;
         loginCard.add(usernameField, form);
         
         form.gridy = 4;
         loginCard.add(new JLabel("Password"), form);
+        
         form.gridy = 5;
         loginCard.add(passwordField, form);
         
@@ -167,7 +149,6 @@ public class MainFrame extends JFrame {
         form.insets = new Insets(6, 12, 6, 12);
         loginCard.add(hint, form);
 
-        // Login authentication event handling
         loginButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 String username = usernameField.getText().trim();
@@ -175,14 +156,12 @@ public class MainFrame extends JFrame {
                 if (username.equals("admin") && password.equals("admin123")) {
                     showMainWindow();
                 } else {
-                    JOptionPane.showMessageDialog(MainFrame.this, "Incorrect username or password.",
-                            "Login Failed", JOptionPane.ERROR_MESSAGE);
+                    showError("Incorrect username or password.", "Login Failed");
                     passwordField.setText("");
                 }
             }
         });
 
-        // Assemble panels in the frame
         JPanel formArea = new JPanel(new GridBagLayout());
         formArea.setOpaque(false);
         formArea.add(loginCard);
@@ -192,43 +171,29 @@ public class MainFrame extends JFrame {
         getRootPane().setDefaultButton(loginButton);
         revalidate();
         repaint();
-        setLocationRelativeTo(null); // Recenter frame
+        setLocationRelativeTo(null);
     }
 
-    /**
-     * Builds and transitions to the main application interface workspace layout.
-     * Contains the sidebar panel (navigation controls) and content panel (screen switcher).
-     */
+    // Transitions UI to the main workspace layout (Sidebar + CardLayout content area).
     private void showMainWindow() {
         setSize(1240, 760);
         menuButtons.clear();
         JPanel root = new JPanel(new BorderLayout());
-        
-        // Add navigation sidebar
         root.add(createSidebar(), BorderLayout.WEST);
         
-        // Add dynamic main content panel
         contentPanel = new JPanel(new CardLayout());
         contentPanel.setBackground(BACKGROUND);
         root.add(contentPanel, BorderLayout.CENTER);
         
         setContentPane(root);
-        showDashboard(); // Default to Dashboard screen
+        showDashboard();
         revalidate();
         repaint();
         setLocationRelativeTo(null);
     }
 
-    // ==========================================
-    // Navigation / Sidebar Elements
-    // ==========================================
-
-    /**
-     * Builds the sidebar panel layout, compiles menu links,
-     * and appends the logout button.
-     *
-     * @return Fully configured JComponent representing the sidebar
-     */
+    // Creates navigation sidebar using BoxLayout and event listeners.
+    // Switches views and saves data on user logout.
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
@@ -236,7 +201,6 @@ public class MainFrame extends JFrame {
         sidebar.setPreferredSize(new Dimension(225, 0));
         sidebar.setBorder(new EmptyBorder(22, 14, 18, 14));
 
-        // Brand logo header in sidebar
         JPanel brand = new JPanel(new BorderLayout(10, 0));
         brand.setOpaque(false);
         brand.setMaximumSize(new Dimension(210, 70));
@@ -248,25 +212,21 @@ public class MainFrame extends JFrame {
         sidebar.add(brand);
         sidebar.add(Box.createVerticalStrut(25));
 
-        // Menu navigation items list
         String[] items = {"Dashboard", "Students", "Rooms", "Allocate",
                 "Waiting List", "Checkout", "Search", "About"};
-        for (int index = 0; index < items.length; index++) {
-            JButton button = createMenuButton(items[index]);
+        for (String item : items) {
+            JButton button = createMenuButton(item);
             sidebar.add(button);
             sidebar.add(Box.createVerticalStrut(5));
-            menuButtons.put(items[index], button);
+            menuButtons.put(item, button);
         }
         
-        // Push logout to the very bottom
         sidebar.add(Box.createVerticalGlue());
         JButton logout = createMenuButton("Logout");
         logout.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                int answer = JOptionPane.showConfirmDialog(MainFrame.this,
-                        "Do you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
-                if (answer == JOptionPane.YES_OPTION) {
-                    manager.saveData(); // Autosave state on user logout
+                if (askConfirm("Do you want to log out?", "Logout")) {
+                    manager.saveData();
                     showLogin();
                 }
             }
@@ -275,13 +235,7 @@ public class MainFrame extends JFrame {
         return sidebar;
     }
 
-    /**
-     * Instantiates and styles an individual menu button.
-     * Resolves matching icons from resources based on lowercase button names.
-     *
-     * @param name Name label of the menu option
-     * @return styled JButton
-     */
+    // Instantiates and styles menu buttons using dynamic resource icon paths.
     private JButton createMenuButton(final String name) {
         JButton button = new JButton(name);
         button.setHorizontalAlignment(SwingConstants.LEFT);
@@ -293,7 +247,6 @@ public class MainFrame extends JFrame {
         button.setMaximumSize(new Dimension(210, 43));
         button.setFont(NORMAL_FONT);
         
-        // Resolve path to menu icons
         String iconName = name.toLowerCase().replace(" ", "-") + ".png";
         button.setIcon(new ImageIcon("resources/" + iconName));
         button.setIconTextGap(12);
@@ -306,28 +259,22 @@ public class MainFrame extends JFrame {
         return button;
     }
 
-    /**
-     * Directs page navigation to show the selected panel view and updates menu highlights.
-     *
-     * @param name The screen section name identifier
-     */
+    // Triggers screen switching inside the CardLayout and highlights active menu selection.
     private void openScreen(String name) {
-        if (name.equals("Dashboard")) showDashboard();
-        else if (name.equals("Students")) showStudents();
-        else if (name.equals("Rooms")) showRooms();
-        else if (name.equals("Allocate")) showAllocation();
-        else if (name.equals("Waiting List")) showWaitingList();
-        else if (name.equals("Checkout")) showCheckout();
-        else if (name.equals("Search")) showSearch();
-        else if (name.equals("About")) showAbout();
+        switch (name) {
+            case "Dashboard":    showDashboard(); break;
+            case "Students":     showStudents(); break;
+            case "Rooms":        showRooms(); break;
+            case "Allocate":     showAllocation(); break;
+            case "Waiting List": showWaitingList(); break;
+            case "Checkout":     showCheckout(); break;
+            case "Search":       showSearch(); break;
+            case "About":        showAbout(); break;
+        }
         highlightMenu(name);
     }
 
-    /**
-     * Swaps the current panel displayed inside the dynamic contentPanel switcher.
-     *
-     * @param screen The new JPanel screen layout to mount
-     */
+    // Replaces active panel in content CardLayout container and triggers repaint.
     private void setScreen(JPanel screen) {
         contentPanel.removeAll();
         contentPanel.add(screen);
@@ -335,11 +282,7 @@ public class MainFrame extends JFrame {
         contentPanel.repaint();
     }
 
-    /**
-     * Changes color styles to highlight the active menu button in the sidebar.
-     *
-     * @param selectedName Name of the active screen
-     */
+    // Changes sidebar buttons colors to indicate active menu selection.
     private void highlightMenu(String selectedName) {
         for (String name : menuButtons.keySet()) {
             JButton button = menuButtons.get(name);
@@ -348,21 +291,12 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // ==========================================
-    // Page Content Rendering Operations
-    // ==========================================
-
-    /**
-     * Renders the Dashboard overview screen.
-     * Displays summary metric cards (Total Students, Total Rooms, Available Beds, Waiting Students)
-     * and a welcome banner layout.
-     */
+    // Builds dashboard metrics banner using GridLayout and summary metric panels.
     private void showDashboard() {
         JPanel screen = createScreen("Dashboard", "Welcome back, Admin. Here is today's hostel overview.");
         JPanel center = new JPanel(new BorderLayout(0, 24));
         center.setOpaque(false);
         
-        // Upper stats summary cards layout
         JPanel cards = new JPanel(new GridLayout(1, 4, 18, 0));
         cards.setOpaque(false);
         cards.add(summaryCard("Total Students", manager.getStudents().size(), "students.png", BLUE));
@@ -371,7 +305,6 @@ public class MainFrame extends JFrame {
         cards.add(summaryCard("Waiting Students", manager.getWaitingQueue().size(), "waiting-list.png", new Color(217, 119, 6)));
         center.add(cards, BorderLayout.NORTH);
 
-        // Lower welcome description card
         JPanel welcomeCard = createCard();
         welcomeCard.setLayout(new BorderLayout(20, 0));
         welcomeCard.add(new JLabel(new ImageIcon("resources/dashboard-large.png")), BorderLayout.WEST);
@@ -379,16 +312,11 @@ public class MainFrame extends JFrame {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Simple hostel management, all in one place");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        title.setForeground(TEXT);
-        JLabel note = new JLabel("Use the sidebar to manage students, rooms, beds, and checkouts.");
-        note.setForeground(MUTED);
         
         text.add(Box.createVerticalGlue());
-        text.add(title);
+        text.add(heading("Simple hostel management, all in one place"));
         text.add(Box.createVerticalStrut(8));
-        text.add(note);
+        text.add(muted("Use the sidebar to manage students, rooms, beds, and checkouts."));
         text.add(Box.createVerticalGlue());
         
         welcomeCard.add(text, BorderLayout.CENTER);
@@ -398,15 +326,7 @@ public class MainFrame extends JFrame {
         highlightMenu("Dashboard");
     }
 
-    /**
-     * Helper to construct formatted metric dashboard cards.
-     *
-     * @param titleText Label describing the statistic
-     * @param number    Calculated numerical figure
-     * @param iconName  Filename of the icon (relative to resources)
-     * @param accent    Highlighted color theme for the numbers
-     * @return styled JPanel
-     */
+    // Creates formatted summary card with subcomponents and colored text highlights.
     private JPanel summaryCard(String titleText, int number, String iconName, Color accent) {
         JPanel card = createCard();
         card.setLayout(new BorderLayout());
@@ -423,16 +343,11 @@ public class MainFrame extends JFrame {
         return card;
     }
 
-    /**
-     * Renders the Student Management table screen.
-     * Hosts search queries, listing grids, and action triggers to add, edit, or delete students.
-     */
+    // Renders student records table with search filter toolbar.
+    // Hooks action listeners for adding, editing, and deleting student records.
     private void showStudents() {
-        JPanel screen = createScreen("Student Management", "Add, edit, delete, and find student records");
-        JPanel card = createCard();
-        card.setLayout(new BorderLayout(0, 14));
+        JPanel card = borderCard(14);
 
-        // Create tool bar area
         final JTextField searchField = new JTextField();
         styleInput(searchField);
         searchField.setPreferredSize(new Dimension(260, 38));
@@ -443,30 +358,16 @@ public class MainFrame extends JFrame {
         
         JPanel tools = new JPanel(new BorderLayout());
         tools.setOpaque(false);
-        
-        JPanel searchArea = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        searchArea.setOpaque(false);
-        searchArea.add(searchField);
-        searchArea.add(searchButton);
-        tools.add(searchArea, BorderLayout.WEST);
-        
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actions.setOpaque(false);
-        actions.add(editButton);
-        actions.add(deleteButton);
-        actions.add(addButton);
-        tools.add(actions, BorderLayout.EAST);
+        tools.add(flowPanel(FlowLayout.LEFT, searchField, searchButton), BorderLayout.WEST);
+        tools.add(flowPanel(FlowLayout.RIGHT, editButton, deleteButton, addButton), BorderLayout.EAST);
         card.add(tools, BorderLayout.NORTH);
 
-        // Config Student JTable
         final DefaultTableModel model = readOnlyModel(new String[]{"Student ID", "Name", "Gender",
                 "Department", "Year", "Phone", "Room"});
         final JTable table = new JTable(model);
-        styleTable(table);
         fillStudentTable(model, manager.getStudents());
-        card.add(createScrollPane(table), BorderLayout.CENTER);
+        card.add(styleAndWrapTable(table), BorderLayout.CENTER);
 
-        // Hook action listeners
         searchButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 fillStudentTable(model, manager.searchStudents(searchField.getText()));
@@ -489,25 +390,18 @@ public class MainFrame extends JFrame {
                     showSelectMessage("student");
                     return;
                 }
-                int answer = JOptionPane.showConfirmDialog(MainFrame.this,
-                        "Delete " + student.getName() + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-                if (answer == JOptionPane.YES_OPTION) {
-                    JOptionPane.showMessageDialog(MainFrame.this, manager.deleteStudent(student.getStudentId()));
-                    showStudents(); // Refresh Student page
+                if (askConfirm("Delete " + student.getName() + "?", "Confirm Delete")) {
+                    showInfo(manager.deleteStudent(student.getStudentId()));
+                    showStudents();
                 }
             }
         });
         
-        screen.add(card, BorderLayout.CENTER);
-        setScreen(screen);
+        setupBasePage("Student Management", "Add, edit, delete, and find student records", card);
     }
 
-    /**
-     * Renders a form input modal dialog to Add a new student or Edit an existing one.
-     * Implements form field validation constraints (empty checks, phone number format).
-     *
-     * @param existingStudent Student profile to edit, or null if creating a new student record
-     */
+    // Renders Add/Edit Student modal dialog.
+    // Validates inputs (non-empty, 10-digit phone) before calling HostelManager.
     private void showStudentForm(final Student existingStudent) {
         final JTextField idField = new JTextField();
         final JTextField nameField = new JTextField();
@@ -516,7 +410,6 @@ public class MainFrame extends JFrame {
         final JComboBox<String> yearBox = new JComboBox<String>(new String[]{"1", "2", "3", "4"});
         final JTextField phoneField = new JTextField();
         
-        // If editing, pre-fill values and disable ID modification
         if (existingStudent != null) {
             idField.setText(existingStudent.getStudentId());
             idField.setEnabled(false);
@@ -527,20 +420,16 @@ public class MainFrame extends JFrame {
             phoneField.setText(existingStudent.getPhoneNumber());
         }
         
-        JPanel form = new JPanel(new GridBagLayout());
-        addFormRow(form, 0, "Student ID", idField);
-        addFormRow(form, 1, "Name", nameField);
-        addFormRow(form, 2, "Gender", genderBox);
-        addFormRow(form, 3, "Department", departmentField);
-        addFormRow(form, 4, "Year", yearBox);
-        addFormRow(form, 5, "Phone Number", phoneField);
+        JPanel form = createGridForm(
+            new String[]{"Student ID", "Name", "Gender", "Department", "Year", "Phone Number"},
+            new Component[]{idField, nameField, genderBox, departmentField, yearBox, phoneField}
+        );
         
         String title = existingStudent == null ? "Add Student" : "Edit Student";
         int answer = JOptionPane.showConfirmDialog(this, form, title,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (answer != JOptionPane.OK_OPTION) return;
 
-        // Perform fields verification
         String id = idField.getText().trim();
         String name = nameField.getText().trim();
         String department = departmentField.getText().trim();
@@ -564,41 +453,29 @@ public class MainFrame extends JFrame {
             message = manager.editStudent(id, name, String.valueOf(genderBox.getSelectedItem()),
                     department, Integer.parseInt(String.valueOf(yearBox.getSelectedItem())), phone);
         }
-        JOptionPane.showMessageDialog(this, message);
-        showStudents(); // Refresh Student page
+        showInfo(message);
+        showStudents();
     }
 
-    /**
-     * Renders the Room Management screen.
-     * Displays a list of rooms and supports options to configure/add a new room or delete empty ones.
-     */
+    // Renders room details table with options to add new or delete vacant rooms.
     private void showRooms() {
-        JPanel screen = createScreen("Room Management", "Manage room capacity and availability");
-        JPanel card = createCard();
-        card.setLayout(new BorderLayout(0, 14));
+        JPanel card = borderCard(14);
         
         JButton addButton = primaryButton("+  Add Room");
         JButton deleteButton = secondaryButton("Delete Selected Room");
         
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actions.setOpaque(false);
-        actions.add(deleteButton);
-        actions.add(addButton);
-        card.add(actions, BorderLayout.NORTH);
+        card.add(flowPanel(FlowLayout.RIGHT, deleteButton, addButton), BorderLayout.NORTH);
 
-        // Config Room JTable
         final DefaultTableModel model = readOnlyModel(new String[]{"Room Number", "Hostel", "Block", "Type",
                 "Capacity", "Occupancy", "Status"});
         final JTable table = new JTable(model);
-        styleTable(table);
         for (Room room : manager.getRooms()) {
             model.addRow(new Object[]{room.getRoomNumber(), room.getHostelType(), room.getBlock(), room.getRoomType(),
                     room.getCapacity(), room.getCurrentOccupancy(),
                     manager.isRoomAvailable(room) ? "Available" : "Full"});
         }
-        card.add(createScrollPane(table), BorderLayout.CENTER);
+        card.add(styleAndWrapTable(table), BorderLayout.CENTER);
         
-        // Hook action events
         addButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) { showRoomForm(); }
         });
@@ -610,23 +487,17 @@ public class MainFrame extends JFrame {
                     return;
                 }
                 String roomNumber = String.valueOf(model.getValueAt(row, 0));
-                int answer = JOptionPane.showConfirmDialog(MainFrame.this,
-                        "Delete room " + roomNumber + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-                if (answer == JOptionPane.YES_OPTION) {
-                    JOptionPane.showMessageDialog(MainFrame.this, manager.deleteRoom(roomNumber));
-                    showRooms(); // Refresh Room page
+                if (askConfirm("Delete room " + roomNumber + "?", "Confirm Delete")) {
+                    showInfo(manager.deleteRoom(roomNumber));
+                    showRooms();
                 }
             }
         });
         
-        screen.add(card, BorderLayout.CENTER);
-        setScreen(screen);
+        setupBasePage("Room Management", "Manage room capacity and availability", card);
     }
 
-    /**
-     * Renders a form input modal dialog to configure and create a new Room.
-     * Implements structured formatting validation for room numbers.
-     */
+    // Renders Add Room modal dialog and builds formatted room number prefixes.
     private void showRoomForm() {
         JComboBox<String> hostelTypeBox = new JComboBox<String>(new String[]{"Boys", "Girls"});
         JComboBox<String> hostelNumberBox = new JComboBox<String>(new String[]{"01", "02", "03", "04"});
@@ -638,13 +509,10 @@ public class MainFrame extends JFrame {
         capacityBox.setSelectedItem("4");
         typeBox.setSelectedItem("Four Sharing");
         
-        JPanel form = new JPanel(new GridBagLayout());
-        addFormRow(form, 0, "Hostel Type", hostelTypeBox);
-        addFormRow(form, 1, "Hostel No.", hostelNumberBox);
-        addFormRow(form, 2, "Block", blockBox);
-        addFormRow(form, 3, "Room No.", roomField);
-        addFormRow(form, 4, "Capacity", capacityBox);
-        addFormRow(form, 5, "Room Type", typeBox);
+        JPanel form = createGridForm(
+            new String[]{"Hostel Type", "Hostel No.", "Block", "Room No.", "Capacity", "Room Type"},
+            new Component[]{hostelTypeBox, hostelNumberBox, blockBox, roomField, capacityBox, typeBox}
+        );
         
         int answer = JOptionPane.showConfirmDialog(this, form, "Add Room",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -660,41 +528,32 @@ public class MainFrame extends JFrame {
             return;
         }
         
-        // Build the unique structured room string code (e.g. GH-01-B-201)
         String roomNumber = manager.makeRoomNumber(hostelType, hostelNumber, block, roomCode);
         Room room = new Room(roomNumber, block,
                 Integer.parseInt(String.valueOf(capacityBox.getSelectedItem())),
                 String.valueOf(typeBox.getSelectedItem()), hostelType);
         
-        JOptionPane.showMessageDialog(this, manager.addRoom(room));
-        showRooms(); // Refresh rooms list view
+        showInfo(manager.addRoom(room));
+        showRooms();
     }
 
-    /**
-     * Renders the Manual Allocation Screen.
-     * Employs cascade event listeners: choosing a student limits choices to compatible hostels,
-     * choosing a hostel filters block letters, choosing a block filters rooms, and choosing a room shows free beds.
-     */
+    // Builds Bed Allocation screen using GridBagLayout and cascading dropdowns.
+    // Resolves available beds dynamically based on selected student parameters.
     private void showAllocation() {
-        JPanel screen = createScreen("Allocate Room", "Select hostel, block, room, and bed manually");
-        JPanel wrapper = centeredWrapper();
         JPanel card = createCard();
         card.setLayout(new GridBagLayout());
         card.setPreferredSize(new Dimension(680, 610));
         GridBagConstraints c = formConstraints();
         
-        JLabel title = new JLabel("Manual Bed Allocation");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 21));
         c.gridy = 0;
-        card.add(title, c);
+        card.add(heading("Manual Bed Allocation"), c);
 
         c.gridy = 1;
         c.insets = new Insets(16, 18, 5, 18);
         card.add(new JLabel("Select Student"), c);
+        
         final JComboBox<Student> studentBox = new JComboBox<Student>();
-        for (Student student : manager.getStudents()) {
-            studentBox.addItem(student);
-        }
+        for (Student student : manager.getStudents()) studentBox.addItem(student);
         c.gridy = 2;
         c.insets = new Insets(3, 18, 8, 18);
         card.add(studentBox, c);
@@ -702,6 +561,7 @@ public class MainFrame extends JFrame {
         c.gridy = 3;
         c.insets = new Insets(8, 18, 5, 18);
         card.add(new JLabel("Available Hostel"), c);
+        
         final JComboBox<String> hostelBox = new JComboBox<String>();
         c.gridy = 4;
         c.insets = new Insets(3, 18, 8, 18);
@@ -710,6 +570,7 @@ public class MainFrame extends JFrame {
         c.gridy = 5;
         c.insets = new Insets(8, 18, 5, 18);
         card.add(new JLabel("Available Block"), c);
+        
         final JComboBox<String> blockBox = new JComboBox<String>();
         c.gridy = 6;
         c.insets = new Insets(3, 18, 8, 18);
@@ -718,6 +579,7 @@ public class MainFrame extends JFrame {
         c.gridy = 7;
         c.insets = new Insets(8, 18, 5, 18);
         card.add(new JLabel("Available Room"), c);
+        
         final JComboBox<Room> roomBox = new JComboBox<Room>();
         c.gridy = 8;
         c.insets = new Insets(3, 18, 8, 18);
@@ -726,82 +588,56 @@ public class MainFrame extends JFrame {
         c.gridy = 9;
         c.insets = new Insets(8, 18, 5, 18);
         card.add(new JLabel("Available Bed"), c);
+        
         final JComboBox<String> bedBox = new JComboBox<String>();
         c.gridy = 10;
         c.insets = new Insets(3, 18, 8, 18);
         card.add(bedBox, c);
 
-        final JLabel currentBedLabel = new JLabel("Current bed: -");
-        currentBedLabel.setForeground(MUTED);
+        final JLabel currentBedLabel = muted("Current bed: -");
         c.gridy = 11;
         c.insets = new Insets(8, 18, 3, 18);
         card.add(currentBedLabel, c);
         
-        final JLabel status = new JLabel("Choose a student to view available beds.");
-        status.setForeground(MUTED);
+        final JLabel status = muted("Choose a student to view available beds.");
         c.gridy = 12;
+        c.insets = new Insets(8, 18, 8, 18);
         card.add(status, c);
-
-        // ==========================================
-        // Cascade Dropdown Listeners
-        // Re-populates downstream filters on upstream state changes
-        // ==========================================
         
         ActionListener studentChanged = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 Student student = (Student) studentBox.getSelectedItem();
-                if (student == null) {
-                    currentBedLabel.setText("Current bed: -");
-                } else {
-                    String currentBed = manager.hasRoom(student) ? student.getRoomNumber() : "Not allocated / waiting";
-                    currentBedLabel.setText("Current bed: " + currentBed);
-                }
-                fillAvailableHostelBox(hostelBox, student);
-                fillAvailableBlockBox(blockBox, student, String.valueOf(hostelBox.getSelectedItem()));
-                fillAvailableRoomBox(roomBox, student, String.valueOf(hostelBox.getSelectedItem()), String.valueOf(blockBox.getSelectedItem()));
-                fillAvailableBedBox(bedBox, student, (Room) roomBox.getSelectedItem());
-                updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+                currentBedLabel.setText("Current bed: " + (manager.hasRoom(student) ? student.getRoomNumber() : "Not allocated / waiting"));
+                refreshCascade(student, hostelBox, blockBox, roomBox, bedBox, status, 1);
             }
         };
         ActionListener hostelChanged = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                fillAvailableBlockBox(blockBox, student, String.valueOf(hostelBox.getSelectedItem()));
-                fillAvailableRoomBox(roomBox, student, String.valueOf(hostelBox.getSelectedItem()), String.valueOf(blockBox.getSelectedItem()));
-                fillAvailableBedBox(bedBox, student, (Room) roomBox.getSelectedItem());
-                updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 2);
             }
         };
         ActionListener blockChanged = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                fillAvailableRoomBox(roomBox, student, String.valueOf(hostelBox.getSelectedItem()), String.valueOf(blockBox.getSelectedItem()));
-                fillAvailableBedBox(bedBox, student, (Room) roomBox.getSelectedItem());
-                updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 3);
             }
         };
         ActionListener roomChanged = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                fillAvailableBedBox(bedBox, student, (Room) roomBox.getSelectedItem());
-                updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 4);
             }
         };
         ActionListener bedChanged = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 5);
             }
         };
 
-        // Register Cascade listeners
         studentBox.addActionListener(studentChanged);
         hostelBox.addActionListener(hostelChanged);
         blockBox.addActionListener(blockChanged);
         roomBox.addActionListener(roomChanged);
         bedBox.addActionListener(bedChanged);
         
-        // Execute initial load
         studentChanged.actionPerformed(null);
 
         JButton allocateButton = primaryButton("Allocate / Change Bed");
@@ -814,23 +650,16 @@ public class MainFrame extends JFrame {
                 Student student = (Student) studentBox.getSelectedItem();
                 Room room = (Room) roomBox.getSelectedItem();
                 String bedLabel = String.valueOf(bedBox.getSelectedItem());
-                JOptionPane.showMessageDialog(MainFrame.this, manager.allocateBed(student, room, bedLabel));
-                showAllocation(); // Refresh dropdown lists
+                showInfo(manager.allocateBed(student, room, bedLabel));
+                showAllocation();
             }
         });
         
-        wrapper.add(card);
-        screen.add(wrapper, BorderLayout.CENTER);
-        setScreen(screen);
+        setupCenteredPage("Allocate Room", "Select hostel, block, room, and bed manually", card);
     }
 
-    /**
-     * Renders the Waiting List queue screen.
-     * Displays queued students who are currently unallocated due to room capacity limits,
-     * sorted in first-in first-out (FIFO) order.
-     */
+    // Renders the first-in, first-out (FIFO) queued students table.
     private void showWaitingList() {
-        JPanel screen = createScreen("Waiting List", "Students are allocated in first-in, first-out order");
         JPanel card = createCard();
         card.setLayout(new BorderLayout());
         
@@ -849,29 +678,20 @@ public class MainFrame extends JFrame {
         }
         
         JTable table = new JTable(model);
-        styleTable(table);
-        card.add(createScrollPane(table), BorderLayout.CENTER);
-        screen.add(card, BorderLayout.CENTER);
-        setScreen(screen);
+        card.add(styleAndWrapTable(table), BorderLayout.CENTER);
+        setupBasePage("Waiting List", "Students are allocated in first-in, first-out order", card);
     }
 
-    /**
-     * Renders the Student Checkout screen.
-     * Enables checkout processing: freeing up the bed slots and automatically allocating
-     * the next waiting student in line.
-     */
+    // Renders Checkout screen using GridBagLayout to release a resident student's bed.
+    // Automatically triggers matching allocations for waiting queue students.
     private void showCheckout() {
-        JPanel screen = createScreen("Student Checkout", "Release a room and process the next waiting student");
-        JPanel wrapper = centeredWrapper();
         JPanel card = createCard();
         card.setLayout(new GridBagLayout());
         card.setPreferredSize(new Dimension(560, 320));
         GridBagConstraints c = formConstraints();
         
-        JLabel title = new JLabel("Checkout Details");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 21));
         c.gridy = 0;
-        card.add(title, c);
+        card.add(heading("Checkout Details"), c);
         
         c.gridy = 1;
         c.insets = new Insets(22, 18, 5, 18);
@@ -881,14 +701,13 @@ public class MainFrame extends JFrame {
         for (Student student : manager.getStudents()) {
             if (manager.hasRoom(student)) studentBox.addItem(student);
         }
-        
         c.gridy = 2;
         c.insets = new Insets(5, 18, 12, 18);
         card.add(studentBox, c);
         
-        final JLabel roomLabel = new JLabel("Allocated room: -");
-        roomLabel.setForeground(MUTED);
+        final JLabel roomLabel = muted("Allocated room: -");
         c.gridy = 3;
+        c.insets = new Insets(8, 18, 8, 18);
         card.add(roomLabel, c);
         
         ActionListener updateRoom = new ActionListener() {
@@ -910,32 +729,22 @@ public class MainFrame extends JFrame {
             public void actionPerformed(ActionEvent event) {
                 Student student = (Student) studentBox.getSelectedItem();
                 if (student == null) {
-                    JOptionPane.showMessageDialog(MainFrame.this, "There is no resident student to check out.");
+                    showWarning("There is no resident student to check out.");
                     return;
                 }
-                int answer = JOptionPane.showConfirmDialog(MainFrame.this,
-                        "Check out " + student.getName() + " from room " + student.getRoomNumber() + "?",
-                        "Confirm Checkout", JOptionPane.YES_NO_OPTION);
-                if (answer == JOptionPane.YES_OPTION) {
-                    JOptionPane.showMessageDialog(MainFrame.this, manager.checkoutStudent(student));
-                    showCheckout(); // Refresh Checkout page
+                if (askConfirm("Check out " + student.getName() + " from room " + student.getRoomNumber() + "?", "Confirm Checkout")) {
+                    showInfo(manager.checkoutStudent(student));
+                    showCheckout();
                 }
             }
         });
         
-        wrapper.add(card);
-        screen.add(wrapper, BorderLayout.CENTER);
-        setScreen(screen);
+        setupCenteredPage("Student Checkout", "Release a room and process the next waiting student", card);
     }
 
-    /**
-     * Renders the Search Records screen.
-     * Queries matching student records from the database using ID, Name, Gender, or Room details.
-     */
+    // Renders search screen toolbar and filters results using database query.
     private void showSearch() {
-        JPanel screen = createScreen("Search", "Find a student using ID, name, or room number");
-        JPanel card = createCard();
-        card.setLayout(new BorderLayout(0, 16));
+        JPanel card = borderCard(16);
         
         final JTextField searchField = new JTextField();
         styleInput(searchField);
@@ -950,36 +759,28 @@ public class MainFrame extends JFrame {
         final DefaultTableModel model = readOnlyModel(new String[]{"Student ID", "Name", "Gender", "Department",
                 "Year", "Phone", "Bed", "Hostel", "Block"});
         JTable table = new JTable(model);
-        styleTable(table);
-        fillSearchTable(model, ""); // Load all records on start
+        fillSearchTable(model, "");
         
         searchButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) { fillSearchTable(model, searchField.getText()); }
         });
         
-        card.add(createScrollPane(table), BorderLayout.CENTER);
-        screen.add(card, BorderLayout.CENTER);
-        setScreen(screen);
+        card.add(styleAndWrapTable(table), BorderLayout.CENTER);
+        setupBasePage("Search", "Find a student using ID, name, or room number", card);
     }
 
-    /**
-     * Renders the About screen.
-     * Displays general academic project information, metadata, and technology stacks.
-     */
+    // Displays academic metadata and project specifications.
     private void showAbout() {
-        JPanel screen = createScreen("About", "Project information");
-        JPanel wrapper = centeredWrapper();
         JPanel card = createCard();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setPreferredSize(new Dimension(650, 470));
         
-        JLabel title = new JLabel("CampusStay");
+        JLabel title = heading("CampusStay");
         title.setFont(new Font("Segoe UI", Font.BOLD, 30));
         title.setForeground(BLUE);
         title.setAlignmentX(CENTER_ALIGNMENT);
         
-        JLabel version = new JLabel("Hostel Room Allocation System  •  Version 1.0");
-        version.setForeground(MUTED);
+        JLabel version = muted("Hostel Room Allocation System  •  Version 1.0");
         version.setAlignmentX(CENTER_ALIGNMENT);
         
         card.add(Box.createVerticalGlue());
@@ -1000,22 +801,10 @@ public class MainFrame extends JFrame {
         
         card.add(note);
         card.add(Box.createVerticalGlue());
-        wrapper.add(card);
-        screen.add(wrapper, BorderLayout.CENTER);
-        setScreen(screen);
+        setupCenteredPage("About", "Project information", card);
     }
 
-    // ==========================================
-    // UI Styling & Element Builders
-    // ==========================================
-
-    /**
-     * Helper to create a standard title-subtitle panel container for screen headers.
-     *
-     * @param titleText    Major heading text
-     * @param subtitleText Description subtext
-     * @return Formatted JPanel header
-     */
+    // Builds header banner panel with title and subtitle labels.
     private JPanel createScreen(String titleText, String subtitleText) {
         JPanel screen = new JPanel(new BorderLayout(0, 20));
         screen.setBackground(BACKGROUND);
@@ -1036,46 +825,28 @@ public class MainFrame extends JFrame {
         return screen;
     }
 
-    /**
-     * Builds a white, round-cornered card panel using custom painting.
-     *
-     * @return RoundedPanel instance
-     */
+    // Creates reusable rounded white container panel using custom painting.
     private JPanel createCard() {
         RoundedPanel panel = new RoundedPanel();
         panel.setBorder(new EmptyBorder(20, 20, 20, 20));
         return panel;
     }
 
-    /**
-     * Builds a primary command button styled with the standard corporate blue color theme.
-     *
-     * @param text Button label
-     * @return styled RoundedButton
-     */
+    // Creates rounded Blue primary action button.
     private JButton primaryButton(String text) {
         RoundedButton button = new RoundedButton(text, BLUE);
         button.setForeground(Color.WHITE);
         return button;
     }
 
-    /**
-     * Builds a secondary control button styled with a muted grey color theme.
-     *
-     * @param text Button label
-     * @return styled RoundedButton
-     */
+    // Creates rounded Grey secondary control button.
     private JButton secondaryButton(String text) {
         RoundedButton button = new RoundedButton(text, new Color(226, 232, 240));
         button.setForeground(TEXT);
         return button;
     }
 
-    /**
-     * Applies rounded margins, consistent sizing, and borders to text input fields.
-     *
-     * @param field Target text field to style
-     */
+    // Applies uniform border, padding, and font styles to input text fields.
     private void styleInput(JTextField field) {
         field.setFont(NORMAL_FONT);
         field.setPreferredSize(new Dimension(0, 42));
@@ -1083,12 +854,7 @@ public class MainFrame extends JFrame {
                 BorderFactory.createLineBorder(BORDER), new EmptyBorder(7, 10, 7, 10)));
     }
 
-    /**
-     * Decorates tables to support grid color alignments, hover row selection highlights,
-     * cell margins, and custom header fonts.
-     *
-     * @param table Target JTable to style
-     */
+    // Applies corporate styling constraints (font, heights, cell margins) to JTable components.
     private void styleTable(JTable table) {
         table.setFont(NORMAL_FONT);
         table.setRowHeight(34);
@@ -1106,40 +872,71 @@ public class MainFrame extends JFrame {
         table.setDefaultRenderer(Object.class, renderer);
     }
 
-    /**
-     * Wraps a table into a structured JScrollPane containing standard borders.
-     *
-     * @param table Target JTable
-     * @return Scroll pane wrapper
-     */
+    // Wraps a JTable into JScrollPane to support layout scrollbars.
     private JScrollPane createScrollPane(JTable table) {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createLineBorder(BORDER));
         return scrollPane;
     }
 
-    /**
-     * Instantiates a DefaultTableModel that disables cell double-click editing.
-     *
-     * @param columns Array of table header labels
-     * @return custom DefaultTableModel
-     */
+    // Unifies creation and display of standard dashboard page views.
+    private void setupBasePage(String title, String subtitle, JPanel card) {
+        JPanel screen = createScreen(title, subtitle);
+        screen.add(card, BorderLayout.CENTER);
+        setScreen(screen);
+    }
+
+    // Unifies creation and display of centered modal-like screen views.
+    private void setupCenteredPage(String title, String subtitle, JPanel card) {
+        JPanel screen = createScreen(title, subtitle);
+        JPanel wrapper = centeredWrapper();
+        wrapper.add(card);
+        screen.add(wrapper, BorderLayout.CENTER);
+        setScreen(screen);
+    }
+
+    // Triggers cascading database dropdown updates on choice modifications.
+    // Syncs choices (Hostel -> Block -> Room -> Bed) using dynamic database parameters.
+    private void refreshCascade(Student student, JComboBox<String> hostelBox, JComboBox<String> blockBox,
+                                JComboBox<Room> roomBox, JComboBox<String> bedBox, JLabel status, int level) {
+        if (level <= 1) {
+            fillAvailableHostelBox(hostelBox, student);
+        }
+        if (level <= 2) {
+            fillAvailableBlockBox(blockBox, student, String.valueOf(hostelBox.getSelectedItem()));
+        }
+        if (level <= 3) {
+            fillAvailableRoomBox(roomBox, student, String.valueOf(hostelBox.getSelectedItem()), String.valueOf(blockBox.getSelectedItem()));
+        }
+        if (level <= 4) {
+            fillAvailableBedBox(bedBox, student, (Room) roomBox.getSelectedItem());
+        }
+        updateAllocationStatus(status, student, hostelBox, blockBox, roomBox, bedBox);
+    }
+
+    // Shared helper to build two-column GridBag layout forms.
+    private JPanel createGridForm(String[] labels, Component[] fields) {
+        JPanel form = new JPanel(new GridBagLayout());
+        for (int i = 0; i < labels.length; i++) {
+            addFormRow(form, i, labels[i], fields[i]);
+        }
+        return form;
+    }
+
+    // Combines table styling and scroll pane wrapping into one step.
+    private JScrollPane styleAndWrapTable(JTable table) {
+        styleTable(table);
+        return createScrollPane(table);
+    }
+
+    // Instantiates table model disabling cell double-click editing.
     private DefaultTableModel readOnlyModel(String[] columns) {
         return new DefaultTableModel(columns, 0) {
             public boolean isCellEditable(int row, int column) { return false; }
         };
     }
 
-    // ==========================================
-    // Cascade Combobox Populators & Helpers
-    // ==========================================
-
-    /**
-     * Filters and populates the Hostel selection combobox relative to student gender compatibility rules.
-     *
-     * @param hostelBox Combobox target
-     * @param student   Selected student record
-     */
+    // Populates available hostels compatible with student gender constraints.
     private void fillAvailableHostelBox(JComboBox<String> hostelBox, Student student) {
         hostelBox.removeAllItems();
         if (student == null) return;
@@ -1151,13 +948,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Filters and populates the Block selection combobox relative to selected hostel.
-     *
-     * @param blockBox   Combobox target
-     * @param student    Selected student record
-     * @param hostelName Name of chosen hostel
-     */
+    // Populates compatible blocks for the chosen hostel.
     private void fillAvailableBlockBox(JComboBox<String> blockBox, Student student, String hostelName) {
         blockBox.removeAllItems();
         if (student == null || hostelName == null || hostelName.equals("null")) return;
@@ -1169,14 +960,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Filters and populates the Room selection combobox relative to selected hostel and block.
-     *
-     * @param roomBox    Combobox target
-     * @param student    Selected student record
-     * @param hostelName Chosen hostel name
-     * @param block      Chosen block letter
-     */
+    // Populates compatible rooms based on hostel and block.
     private void fillAvailableRoomBox(JComboBox<Room> roomBox, Student student, String hostelName, String block) {
         roomBox.removeAllItems();
         if (student == null || hostelName == null || hostelName.equals("null")
@@ -1190,13 +974,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Filters and populates the Bed selection combobox relative to chosen room.
-     *
-     * @param bedBox  Combobox target
-     * @param student Selected student
-     * @param room    Chosen room
-     */
+    // Populates unoccupied beds inside the selected room.
     private void fillAvailableBedBox(JComboBox<String> bedBox, Student student, Room room) {
         bedBox.removeAllItems();
         if (student == null || room == null) return;
@@ -1208,9 +986,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Updates the status prompt descriptive text explaining whether manual allocation is ready to execute.
-     */
+    // Updates allocation status label to show selection readiness.
     private void updateAllocationStatus(JLabel status, Student student, JComboBox<String> hostelBox,
                                         JComboBox<String> blockBox, JComboBox<Room> roomBox,
                                         JComboBox<String> bedBox) {
@@ -1231,12 +1007,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Resolves the descriptive hostel name code prefix from a room code identifier.
-     *
-     * @param room Room object
-     * @return Hostel name (e.g. BH-01)
-     */
+    // Extracts structured hostel prefix name from room ID string (e.g. GH-01).
     private String getHostelName(Room room) {
         String roomNumber = room.getRoomNumber();
         String[] parts = roomNumber.split("-");
@@ -1244,13 +1015,7 @@ public class MainFrame extends JFrame {
         return room.getHostelType();
     }
 
-    /**
-     * Checks if a JComboBox already contains a specific text string.
-     *
-     * @param comboBox JComboBox object
-     * @param value    Value query
-     * @return True if value already present, false otherwise
-     */
+    // Checks if combobox already contains a selection value query.
     private boolean comboHasItem(JComboBox<String> comboBox, String value) {
         for (int i = 0; i < comboBox.getItemCount(); i++) {
             if (String.valueOf(comboBox.getItemAt(i)).equalsIgnoreCase(value)) return true;
@@ -1258,12 +1023,7 @@ public class MainFrame extends JFrame {
         return false;
     }
 
-    /**
-     * Clears and updates the default table model with student data rows.
-     *
-     * @param model    TableModel reference
-     * @param students List of student profiles to render
-     */
+    // Populates Student table model from records.
     private void fillStudentTable(DefaultTableModel model, ArrayList<Student> students) {
         model.setRowCount(0);
         for (Student student : students) {
@@ -1273,12 +1033,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Clears and updates the search table model matching student queries.
-     *
-     * @param model TableModel reference
-     * @param text  Filter query text
-     */
+    // Populates Search table model matching text query.
     private void fillSearchTable(DefaultTableModel model, String text) {
         model.setRowCount(0);
         for (Student student : manager.searchStudents(text)) {
@@ -1290,13 +1045,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Maps the selected JTable row index back to the underlying Student model object.
-     *
-     * @param table Table UI component
-     * @param model TableModel data structure
-     * @return The selected Student object, or null if no row selection is active
-     */
+    // Maps JTable row index back to underlying Student model object.
     private Student selectedStudent(JTable table, DefaultTableModel model) {
         int row = table.getSelectedRow();
         if (row < 0) return null;
@@ -1304,14 +1053,7 @@ public class MainFrame extends JFrame {
         return manager.findStudent(String.valueOf(model.getValueAt(modelRow, 0)));
     }
 
-    /**
-     * Helper to append a standard two-column form row (Label + Input component) into a form.
-     *
-     * @param form  Container JPanel
-     * @param row   Grid layout Y line offset
-     * @param label Text prompt
-     * @param field Form input component
-     */
+    // Shared GridBagConstraints configuration to add two-column form rows.
     private void addFormRow(JPanel form, int row, String label, Component field) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridy = row;
@@ -1326,11 +1068,7 @@ public class MainFrame extends JFrame {
         form.add(field, c);
     }
 
-    /**
-     * Generates a template GridBagConstraints for vertical form components.
-     *
-     * @return configured GridBagConstraints
-     */
+    // Returns template GridBagConstraints configuration for dialog layouts.
     private GridBagConstraints formConstraints() {
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
@@ -1340,24 +1078,14 @@ public class MainFrame extends JFrame {
         return c;
     }
 
-    /**
-     * Builds a transparent wrapper utilizing GridBagLayout to center contents.
-     *
-     * @return wrapper JPanel
-     */
+    // Creates transparent GridBagLayout panel wrapper to center contents.
     private JPanel centeredWrapper() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
         return panel;
     }
 
-    /**
-     * Constructs a styled two-column horizontal row representing metadata values (e.g. for About page).
-     *
-     * @param labelText Metric label
-     * @param valueText Metric description value
-     * @return JPanel containing standard formatted labels
-     */
+    // Renders styled two-column horizontal row representing metadata values.
     private JPanel infoLine(String labelText, String valueText) {
         JPanel panel = new JPanel(new GridLayout(1, 2, 20, 0));
         panel.setOpaque(false);
@@ -1371,31 +1099,66 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
-    /**
-     * Renders a warning prompt asking the user to make a grid selection first.
-     *
-     * @param item Name of the object selection expected
-     */
+    // Triggers warning message if no table selection is active.
     private void showSelectMessage(String item) {
-        JOptionPane.showMessageDialog(this, "Please select a " + item + " from the table.");
+        showWarning("Please select a " + item + " from the table.");
     }
 
-    /**
-     * Displays a validation warning alert modal.
-     *
-     * @param message Description alert text
-     */
+    // Shared dialog wrapper around JOptionPane.
+    private void showMessage(String message, String title, int type) {
+        JOptionPane.showMessageDialog(this, message, title, type);
+    }
+
+    // Display dialog boxes using the shared wrapper.
+    private void showInfo(String message) {
+        showMessage(message, "Information", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void showWarning(String message) {
-        JOptionPane.showMessageDialog(this, message, "Validation", JOptionPane.WARNING_MESSAGE);
+        showMessage(message, "Validation", JOptionPane.WARNING_MESSAGE);
     }
 
-    // ==========================================
-    // Custom Antialiased UI Painting Classes
-    // ==========================================
+    private void showError(String message, String title) {
+        showMessage(message, title, JOptionPane.ERROR_MESSAGE);
+    }
 
-    /**
-     * Custom panel that overrides paintComponent to render smooth, anti-aliased rounded borders.
-     */
+    // Shared confirmation dialog helper returning user selection.
+    private boolean askConfirm(String message, String title) {
+        int answer = JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION);
+        return answer == JOptionPane.YES_OPTION;
+    }
+
+    // Reusable BorderLayout card container.
+    private JPanel borderCard(int gap) {
+        JPanel card = createCard();
+        card.setLayout(new BorderLayout(0, gap));
+        return card;
+    }
+
+    // Creates transparent FlowLayout panel.
+    private JPanel flowPanel(int align, Component... components) {
+        JPanel panel = new JPanel(new FlowLayout(align, 8, 0));
+        panel.setOpaque(false);
+        for (Component c : components) panel.add(c);
+        return panel;
+    }
+
+    // Creates bold heading label.
+    private JLabel heading(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 21));
+        label.setForeground(TEXT);
+        return label;
+    }
+
+    // Creates muted gray description label.
+    private JLabel muted(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(MUTED);
+        return label;
+    }
+
+    // Overrides paintComponent to enable smooth, anti-aliased rounded borders.
     private static class RoundedPanel extends JPanel {
         protected void paintComponent(Graphics graphics) {
             Graphics2D copy = (Graphics2D) graphics.create();
@@ -1406,12 +1169,10 @@ public class MainFrame extends JFrame {
             super.paintComponent(graphics);
         }
 
-        RoundedPanel() { setOpaque(false); } // Allow parent background to shine through corners
+        RoundedPanel() { setOpaque(false); }
     }
 
-    /**
-     * Custom button subclass that paints anti-aliased rounded edges using standard color settings.
-     */
+    // Overrides paintComponent to render styled rounded edges.
     private static class RoundedButton extends JButton {
         private Color buttonColor;
 
@@ -1435,12 +1196,3 @@ public class MainFrame extends JFrame {
         }
     }
 }
-
-
-
-
-
-
-
-
-
