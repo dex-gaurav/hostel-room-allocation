@@ -4,60 +4,53 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 
-/**
- * HostelManager serves as the controller/business logic layer of the application.
- * It manages student allocations, room occupancies, the waiting list, and coordinates
- * saving/loading operations via FileManager. It also implements automatic room/bed allocation rules,
- * validation constraints (e.g., gender matching), and data consistency repairs.
- */
+// Encapsulates hostel business logic and coordinates persistence.
+// Demonstrates MVC controller design, validation rules, and collection management.
 public class HostelManager {
-    // Internal lists and queues tracking state
     private ArrayList<Student> students;
     private ArrayList<Room> rooms;
     private Queue<String> waitingQueue;
 
-    /**
-     * Constructor initializes the manager and immediately loads existing data from disk.
-     */
+    // Coordinates FileManager persistence.
+    // Loads saved data from disk upon instantiation.
     public HostelManager() { loadData(); }
 
     // ==========================================
     // Core State Accessors
     // ==========================================
 
-    /**
-     * @return The list of all registered students
-     */
+    // Encapsulates access to student records.
+    // ArrayList stores dynamic student records.
     public ArrayList<Student> getStudents() { return students; }
 
-    /**
-     * @return The list of all configured rooms
-     */
+    // Encapsulates access to room records.
+    // ArrayList stores dynamic room configurations.
     public ArrayList<Room> getRooms() { return rooms; }
 
-    /**
-     * @return The queue of student IDs currently waiting for room allocation
-     */
+    // Encapsulates access to the waiting list.
+    // Queue maintains FIFO waiting order.
     public Queue<String> getWaitingQueue() { return waitingQueue; }
 
     // ==========================================
     // Persistence Layer Integration
     // ==========================================
 
-    /**
-     * Loads student, room, and waiting queue data from storage files.
-     * Also runs a validation/repair routine to correct potential data anomalies.
-     */
+    // Viva: Data Recovery | Consistency
+    // Restores saved hostel data and validates integrity.
     public void loadData() {
         students = FileManager.loadStudents();
         rooms = FileManager.loadRooms();
         waitingQueue = FileManager.loadWaitingQueue();
-        repairOldDataIfNeeded(); // Validates consistency (e.g. correct counts, gender matches)
+        
+        if (students == null) students = new ArrayList<Student>();
+        if (rooms == null) rooms = new ArrayList<Room>();
+        if (waitingQueue == null) waitingQueue = new LinkedList<String>();
+        
+        repairOldDataIfNeeded();
     }
 
-    /**
-     * Commits the current lists of students, rooms, and waiting queue back to storage files.
-     */
+    // Viva: Serialization | File Handling
+    // Persists students, rooms and waiting queue using serialization.
     public void saveData() {
         FileManager.saveStudents(students);
         FileManager.saveRooms(rooms);
@@ -68,14 +61,9 @@ public class HostelManager {
     // Student Management Operations
     // ==========================================
 
-    /**
-     * Registers a new student in the system and triggers automatic room allocation.
-     * If no compatible room has space, the student is added to the waiting queue.
-     * Saves data automatically.
-     *
-     * @param student The new Student object to register
-     * @return Status message indicating registration success and allocation details
-     */
+    // Viva: Validation | ArrayList | Auto Allocation
+    // Business Rule: Student ID must be unique.
+    // Registers a new student and triggers auto-allocation or waiting queue.
     public String addStudent(Student student) {
         if (findStudent(student.getStudentId()) != null) {
             return "A student with this ID already exists.";
@@ -86,19 +74,9 @@ public class HostelManager {
         return "Student added successfully.\n" + allocationMessage;
     }
 
-    /**
-     * Updates an existing student's details.
-     * If the student's gender changes, they may no longer be compatible with their current room.
-     * If incompatible, they are removed from the room, and auto-allocated elsewhere.
-     *
-     * @param studentId   ID of student to update
-     * @param name        New name
-     * @param gender      New gender
-     * @param department  New department
-     * @param year        New year of study
-     * @param phoneNumber New contact number
-     * @return Status message summarizing update details and potential re-allocations
-     */
+    // Viva: Room Allocation | Validation
+    // Re-allocates student if gender details change.
+    // Demonstrates reference sharing and status validation.
     public String editStudent(String studentId, String name, String gender,
                               String department, int year, String phoneNumber) {
         Student student = findStudent(studentId);
@@ -107,7 +85,6 @@ public class HostelManager {
         String oldBed = student.getRoomNumber();
         Room oldRoom = findRoom(oldBed);
         
-        // Update details
         student.setName(name);
         student.setGender(gender);
         student.setDepartment(department);
@@ -121,7 +98,6 @@ public class HostelManager {
             student.setRoomNumber("");
             waitingQueue.remove(student.getStudentId());
             
-            // Try to find a new compatible room, and allocate waiting students to the newly freed bed
             message += "\n" + allocateStudentAutomatically(student);
             message += allocateWaitingStudentsToRoom(oldRoom);
         }
@@ -129,14 +105,8 @@ public class HostelManager {
         return message;
     }
 
-    /**
-     * Deletes a student from the system.
-     * Frees up their bed, removes them from the waiting queue, and allocates waiting
-     * students into the freed room if applicable.
-     *
-     * @param studentId The ID of the student to delete
-     * @return Status message
-     */
+    // Viva: Room Allocation | FIFO | Waiting List
+    // Deletes student, frees bed slot, and allocates freed bed to waiting queue.
     public String deleteStudent(String studentId) {
         Student student = findStudent(studentId);
         if (student == null) return "Student record was not found.";
@@ -145,19 +115,14 @@ public class HostelManager {
         waitingQueue.remove(student.getStudentId());
         students.remove(student);
         
-        // If a bed was freed, try to immediately allocate a student from the waiting list
         String queueMessage = allocateWaitingStudentsToRoom(oldRoom);
         saveData();
         if (queueMessage.isEmpty()) return "Student deleted successfully.";
         return "Student deleted successfully." + queueMessage;
     }
 
-    /**
-     * Searches students based on match criteria (ID, Name, Gender, or Room Number).
-     *
-     * @param searchText Search filter text
-     * @return Filtered list of matching students
-     */
+    // Viva: Linear Search | ArrayList
+    // Time: O(n) - Linear search through students matching filter fields.
     public ArrayList<Student> searchStudents(String searchText) {
         ArrayList<Student> results = new ArrayList<Student>();
         String text = searchText.trim().toLowerCase();
@@ -179,33 +144,23 @@ public class HostelManager {
     // Room Management Operations
     // ==========================================
 
-    /**
-     * Configures and registers a new room in the system.
-     * Normalizes default room configurations and attempts to fill the room
-     * if there are students waiting on the waiting list.
-     *
-     * @param room The new Room object to add
-     * @return Status message
-     */
+    // Viva: Validation | Consistency
+    // Business Rule: Room number must be unique.
+    // Adds a room and auto-allocates to waiting students.
     public String addRoom(Room room) {
         normalizeRoom(room);
         if (findRoom(room.getRoomNumber()) != null) return "This room number already exists.";
         rooms.add(room);
         
-        // Check if any waiting students can be accommodated in this new room
         String queueMessage = allocateWaitingStudentsToRoom(room);
         saveData();
         if (queueMessage.isEmpty()) return "Room added successfully.";
         return "Room added successfully." + queueMessage;
     }
 
-    /**
-     * Deletes a room config if it is unoccupied.
-     * Occupied rooms cannot be deleted to prevent student record corruption.
-     *
-     * @param roomNumber The room code identifier to remove
-     * @return Status message
-     */
+    // Viva: Validation | Business Rules
+    // Business Rule: Occupied rooms can never be deleted.
+    // Removes room configuration only if occupancy is zero.
     public String deleteRoom(String roomNumber) {
         Room room = findRoom(roomNumber);
         if (room == null) return "Room was not found.";
@@ -219,14 +174,9 @@ public class HostelManager {
     // Manual Allocation Operations
     // ==========================================
 
-    /**
-     * Allocates a student to a room automatically or processes a room-change request.
-     * Validates gender compatibility constraints.
-     *
-     * @param student The student being allocated
-     * @param room    Target room (if null, auto-allocates to any available)
-     * @return Status message summarizing the result of the allocation
-     */
+    // Viva: Room Allocation | Relocation
+    // Business Rule: Male students -> Boys hostel; Female students -> Girls hostel.
+    // Performs auto or manual allocation, handling room-change and waiting list fallbacks.
     public String allocateRoom(Student student, Room room) {
         if (student == null) return "Please select a student.";
         if (room == null) {
@@ -240,7 +190,6 @@ public class HostelManager {
         String oldBed = student.getRoomNumber();
         Room oldRoom = findRoom(oldBed);
         
-        // If the student is already in this room, assign them a different bed slot inside this room
         if (hasRoom(student) && oldRoom != null
                 && oldRoom.getRoomNumber().equalsIgnoreCase(room.getRoomNumber())) {
             String newBed = findNextBedNumber(room, oldBed);
@@ -251,7 +200,6 @@ public class HostelManager {
             return "Bed changed from " + oldBed + " to " + newBed + ".";
         }
 
-        // Validate if room is full
         if (!isRoomAvailable(room)) {
             if (!hasRoom(student)) {
                 addToWaitingQueue(student);
@@ -261,7 +209,6 @@ public class HostelManager {
             return "Selected room is full. Please choose another compatible room.";
         }
 
-        // Process standard relocation
         if (hasRoom(student)) {
             releaseCurrentRoom(student);
         }
@@ -269,15 +216,9 @@ public class HostelManager {
         return finalizeAllocation(student, bedNumber, oldBed);
     }
 
-    /**
-     * Manually allocates a student to a specific, labeled bed inside a room.
-     * Evaluates security rules such as occupancy conflicts and gender matches.
-     *
-     * @param student  The student record
-     * @param room     Target room configuration
-     * @param bedLabel Label code (e.g. "BED-A")
-     * @return Status message
-     */
+    // Viva: Occupancy | Relocation
+    // Business Rule: Room occupancy can never exceed capacity.
+    // Assigns student to a specific bed, updating room occupancy counts.
     public String allocateBed(Student student, Room room, String bedLabel) {
         if (student == null) return "Please select a student.";
         if (room == null) return "Please select a room.";
@@ -295,7 +236,6 @@ public class HostelManager {
             return "Selected bed is already occupied. Please choose another bed.";
         }
 
-        // Adjust room occupancy levels based on movement direction
         Room oldRoom = findRoom(oldBed);
         if (oldRoom == null) {
             room.setCurrentOccupancy(room.getCurrentOccupancy() + 1);
@@ -307,24 +247,18 @@ public class HostelManager {
         return finalizeAllocation(student, newBed, oldBed);
     }
 
-    /**
-     * Checks a student out of their room, removing them from the system.
-     * Automatically attempts to allocate a waiting student to the newly freed slot.
-     *
-     * @param student Student checking out
-     * @return Status message
-     */
+    // Viva: Room Allocation | FIFO | Waiting List
+    // Business Rule: Freed beds are immediately offered to waiting students.
+    // Releases student's bed and triggers FIFO matching for waiting list.
     public String checkoutStudent(Student student) {
         if (student == null) return "Please select a student.";
         if (!hasRoom(student)) return "This student does not have an allocated room.";
         Room room = releaseCurrentRoom(student);
         String freedBed = student.getRoomNumber();
         
-        // Remove student records
         students.remove(student);
         waitingQueue.remove(student.getStudentId());
 
-        // Allocate newly vacant spot to anyone waiting
         String queueMessage = allocateWaitingStudentsToRoom(room);
         saveData();
         if (queueMessage.isEmpty()) {
@@ -337,12 +271,8 @@ public class HostelManager {
     // Querying and Helper Utilities
     // ==========================================
 
-    /**
-     * Finds a student by their ID.
-     *
-     * @param studentId The student ID string
-     * @return The Student object, or null if not found
-     */
+    // Viva: Linear Search | OOP
+    // Time: O(n) - Scans student records for matching student ID.
     public Student findStudent(String studentId) {
         for (Student student : students) {
             if (student.getStudentId().equalsIgnoreCase(studentId)) return student;
@@ -350,12 +280,8 @@ public class HostelManager {
         return null;
     }
 
-    /**
-     * Finds a room by either its room code or an individual bed code prefix.
-     *
-     * @param roomOrBedNumber String identifying room or bed
-     * @return The Room object, or null if not found
-     */
+    // Viva: Linear Search | OOP
+    // Time: O(rooms) - Locates room by parsing bed code prefixes.
     public Room findRoom(String roomOrBedNumber) {
         if (roomOrBedNumber == null || roomOrBedNumber.isEmpty()) return null;
         String roomNumber = getRoomNumberFromBed(roomOrBedNumber);
@@ -365,32 +291,17 @@ public class HostelManager {
         return null;
     }
 
-    /**
-     * Checks if a student has an assigned room.
-     *
-     * @param student Student object to inspect
-     * @return True if student has room assigned, false otherwise
-     */
+    // Checks if student object has assigned bed code.
     public boolean hasRoom(Student student) {
         return student != null && student.getRoomNumber() != null && !student.getRoomNumber().isEmpty();
     }
 
-    /**
-     * Evaluates if a room has at least one vacant bed.
-     *
-     * @param room Room object to evaluate
-     * @return True if room occupancy is less than capacity
-     */
+    // Business Rule: Room occupancy can never exceed capacity.
     public boolean isRoomAvailable(Room room) {
         return room != null && room.getCurrentOccupancy() < room.getCapacity();
     }
 
-    /**
-     * Checks if a student ID is present on the waiting list.
-     *
-     * @param studentId Student ID
-     * @return True if student is waiting
-     */
+    // Time: O(queue size) - Checks if student ID exists in waiting list.
     public boolean isWaiting(String studentId) {
         for (String waitingId : waitingQueue) {
             if (waitingId.equalsIgnoreCase(studentId)) return true;
@@ -398,11 +309,7 @@ public class HostelManager {
         return false;
     }
 
-    /**
-     * Counts the total number of rooms that have at least one vacant bed.
-     *
-     * @return Count of available rooms
-     */
+    // Counts rooms with at least one empty bed slot.
     public int getAvailableRoomCount() {
         int count = 0;
         for (Room room : rooms) {
@@ -411,11 +318,7 @@ public class HostelManager {
         return count;
     }
 
-    /**
-     * Calculates the sum of all empty beds across all registered rooms.
-     *
-     * @return Total empty bed count
-     */
+    // Sums empty beds across all rooms.
     public int getAvailableBedCount() {
         int count = 0;
         for (Room room : rooms) {
@@ -424,14 +327,7 @@ public class HostelManager {
         return count;
     }
 
-    /**
-     * Verifies that student gender is compatible with hostel gender restrictions.
-     * Boys hostel accommodates Male students; Girls hostel accommodates Female students.
-     *
-     * @param student The student in question
-     * @param room    The target room
-     * @return True if genders match the hostel block restriction
-     */
+    // Business Rule: Male -> Boys hostel; Female -> Girls hostel.
     public boolean canStudentStayInRoom(Student student, Room room) {
         if (student == null || room == null) return false;
         String gender = student.getGender();
@@ -442,32 +338,17 @@ public class HostelManager {
         return false;
     }
 
-    /**
-     * Evaluates if a room can accept a student for a manual allocation operation.
-     * Checks gender compliance and free slot availability.
-     *
-     * @param student Student
-     * @param room    Target room
-     * @return True if room can receive the student
-     */
+    // Checks gender restrictions and occupancy limits for manual allocation.
     public boolean canRoomAcceptStudentForManualAllocation(Student student, Room room) {
         if (!canStudentStayInRoom(student, room)) return false;
         Room currentRoom = findRoom(student.getRoomNumber());
-        // If they are already in this room, they can move to another bed inside it
         if (currentRoom != null && currentRoom.getRoomNumber().equalsIgnoreCase(room.getRoomNumber())) {
             return findNextBedNumber(room, student.getRoomNumber()) != null;
         }
         return isRoomAvailable(room);
     }
 
-    /**
-     * Evaluates if a specific bed slot label is free and compatible for a student.
-     *
-     * @param student  Student
-     * @param room     Target room
-     * @param bedLabel Specific bed label
-     * @return True if target bed slot is unoccupied and compatible
-     */
+    // Checks if specific bed slot is unoccupied and gender compatible.
     public boolean canBedAcceptStudentForManualAllocation(Student student, Room room, String bedLabel) {
         if (!canStudentStayInRoom(student, room)) return false;
         if (bedLabel == null || bedLabel.trim().isEmpty()) return false;
@@ -475,12 +356,7 @@ public class HostelManager {
         return !isBedOccupied(bedNumber);
     }
 
-    /**
-     * Searches for the first available room matching the student's gender constraints.
-     *
-     * @param student Student to search for
-     * @return First compatible Room found with space, or null if none
-     */
+    // Time: O(rooms) - Scans for first compatible room with space.
     public Room findAvailableRoomForStudent(Student student) {
         for (Room room : rooms) {
             if (isRoomAvailable(room) && canStudentStayInRoom(student, room)) {
@@ -490,26 +366,13 @@ public class HostelManager {
         return null;
     }
 
-    /**
-     * Determines the prefix acronym for the hostel block.
-     *
-     * @param hostelType "Boys" or "Girls"
-     * @return "GH" for girls hostel, "BH" for boys hostel
-     */
+    // Map hostel category to code prefixes BH/GH.
     public String getHostelPrefix(String hostelType) {
         if (hostelType != null && hostelType.equalsIgnoreCase("Girls")) return "GH";
         return "BH";
     }
 
-    /**
-     * Formats details into a standard room code string (e.g. "BH-01-A-101").
-     *
-     * @param hostelType   Hostel restriction type
-     * @param hostelNumber Hostel number
-     * @param block        Block letter
-     * @param roomNumber   Room number digits
-     * @return Standardized room number string
-     */
+    // Formats room components into unified database code.
     public String makeRoomNumber(String hostelType, String hostelNumber, String block, String roomNumber) {
         return getHostelPrefix(hostelType) + "-" + hostelNumber + "-" + block.toUpperCase() + "-" + roomNumber;
     }
@@ -518,25 +381,14 @@ public class HostelManager {
     // Private Allocator Subroutines
     // ==========================================
 
-    /**
-     * Auto-allocates student to an available room and saves the state.
-     *
-     * @param student Student
-     * @return Status report
-     */
+    // Executes auto-allocation and saves state.
     private String allocateStudentAndSave(Student student) {
         String message = allocateStudentAutomatically(student);
         saveData();
         return message;
     }
 
-    /**
-     * Business logic for automatically assigning a bed to a student.
-     * Places the student on the waiting queue if no room fits.
-     *
-     * @param student Student to allocate
-     * @return Message describing where allocated or if placed on waiting list
-     */
+    // Finds first compatible room or falls back to waiting queue.
     private String allocateStudentAutomatically(Student student) {
         Room room = findAvailableRoomForStudent(student);
         if (room == null) {
@@ -548,13 +400,7 @@ public class HostelManager {
         return "Bed " + bedNumber + " allocated automatically.";
     }
 
-    /**
-     * Commits a student to a room by determining the next bed letter and incrementing room occupancy.
-     *
-     * @param student Target student
-     * @param room    Target room
-     * @return Allocated bed identifier
-     */
+    // Assigns next available bed and updates occupancy.
     private String allocateStudentToRoom(Student student, Room room) {
         String bedNumber = findNextBedNumber(room);
         student.setRoomNumber(bedNumber);
@@ -562,34 +408,25 @@ public class HostelManager {
         return bedNumber;
     }
 
-    /**
-     * Scans the waiting list and allocates as many qualifying students as possible to a vacant room.
-     * Implements FIFO (first-in, first-out) matching relative to room availability.
-     *
-     * @param room The room that has free slots
-     * @return Log of allocations that occurred
-     */
+    // Business Rule: Waiting queue follows FIFO.
+    // Matches waiting students to newly freed room slots using FIFO.
     private String allocateWaitingStudentsToRoom(Room room) {
         if (room == null || !isRoomAvailable(room) || waitingQueue.isEmpty()) return "";
         int originalSize = waitingQueue.size();
         int allocatedCount = 0;
         String names = "";
         
-        // Loop through the current waiting queue elements
         for (int i = 0; i < originalSize; i++) {
             String studentId = waitingQueue.poll();
             Student student = findStudent(studentId);
-            // Ignore if student record is deleted or they already got a room
             if (student == null || hasRoom(student)) {
                 continue;
             }
-            // Check compatibility and room capacity
             if (isRoomAvailable(room) && canStudentStayInRoom(student, room)) {
                 String bedNumber = allocateStudentToRoom(student, room);
                 allocatedCount++;
                 names += "\n- " + student.getName() + " -> " + bedNumber;
             } else {
-                // If they cannot be accommodated in this room, place them back in the queue
                 waitingQueue.offer(studentId);
             }
         }
@@ -597,34 +434,21 @@ public class HostelManager {
         return "\nAllocated " + allocatedCount + " waiting student(s):" + names;
     }
 
-    /**
-     * Appends a student ID to the waiting queue if they aren't already allocated or in queue.
-     *
-     * @param student Student record
-     */
+    // Time: O(1) - Queue insertion of student ID.
     private void addToWaitingQueue(Student student) {
         if (!hasRoom(student) && !isWaiting(student.getStudentId())) {
             waitingQueue.offer(student.getStudentId());
         }
     }
 
-    /**
-     * Wrapper to find next free bed letter. Defaulting to BED-A if no index matches.
-     */
+    // Returns first free bed label in the room.
     private String findNextBedNumber(Room room) {
         String bedNumber = findNextBedNumber(room, "");
         if (bedNumber == null) return room.getRoomNumber() + "-BED-A";
         return bedNumber;
     }
 
-    /**
-     * Computes the first unused bed label ('A' to capacity index) in a room.
-     * Allows skipping a specific bed if doing a relocation check.
-     *
-     * @param room      Room configuration
-     * @param bedToSkip Bed ID to ignore
-     * @return Unused bed code (e.g. "BH-01-A-101-BED-C"), or null if full
-     */
+    // Computes first unused bed label, ignoring specified skip label.
     private String findNextBedNumber(Room room, String bedToSkip) {
         for (int i = 0; i < room.getCapacity(); i++) {
             String bedNumber = room.getRoomNumber() + "-BED-" + (char)('A' + i);
@@ -634,12 +458,7 @@ public class HostelManager {
         return null;
     }
 
-    /**
-     * Iterates all students to check if anyone is currently assigned to the given bed label.
-     *
-     * @param bedNumber Fully qualified bed code
-     * @return True if bed is occupied
-     */
+    // Time: O(n) - Scans if any student is assigned to bed code.
     private boolean isBedOccupied(String bedNumber) {
         for (Student student : students) {
             if (bedNumber.equalsIgnoreCase(student.getRoomNumber())) return true;
@@ -647,13 +466,7 @@ public class HostelManager {
         return false;
     }
 
-    /**
-     * Parses the room code prefix from a bed code string.
-     * E.g., extracts "BH-01-A-101" from "BH-01-A-101-BED-A".
-     *
-     * @param roomOrBedNumber String to parse
-     * @return Extracted room code
-     */
+    // Truncates bed label from room code.
     private String getRoomNumberFromBed(String roomOrBedNumber) {
         int bedIndex = roomOrBedNumber.toUpperCase().indexOf("-BED-");
         if (bedIndex >= 0) return roomOrBedNumber.substring(0, bedIndex);
@@ -664,11 +477,7 @@ public class HostelManager {
     // Data Recovery & Clean-up Operations
     // ==========================================
 
-    /**
-     * Evaluates data integrity of loaded files.
-     * Fixes default fields for old room entries, fixes bed string formats,
-     * and performs layout rebuilds/recounts when anomalies are found.
-     */
+    // Repairs legacy data and restores allocation consistency.
     private void repairOldDataIfNeeded() {
         boolean oldDataFound = false;
         for (Room room : rooms) {
@@ -689,10 +498,7 @@ public class HostelManager {
         }
     }
 
-    /**
-     * Complete reset of room allocations. Rebuilds from scratch by clearing room occupancies,
-     * resetting student assignments, and allocating everyone sequentially.
-     */
+    // Resets allocations and rebuilds from scratch sequentially.
     private void rebuildAllAllocations() {
         waitingQueue = new LinkedList<String>();
         for (Room room : rooms) room.setCurrentOccupancy(0);
@@ -700,10 +506,7 @@ public class HostelManager {
         for (Student student : students) allocateStudentAutomatically(student);
     }
 
-    /**
-     * Re-scans active students to count occupancy values for all rooms.
-     * Detects invalid assignments, clears them, and places affected students on the waiting list.
-     */
+    // Rebuilds occupancy counts from active student allocations.
     private void recountRoomOccupancy() {
         for (Room room : rooms) room.setCurrentOccupancy(0);
         for (Student student : students) {
@@ -712,7 +515,6 @@ public class HostelManager {
                 if (room != null && canStudentStayInRoom(student, room) && room.getCurrentOccupancy() < room.getCapacity()) {
                     room.setCurrentOccupancy(room.getCurrentOccupancy() + 1);
                 } else {
-                    // Invalid/overflow room assignment detected: clear and enqueue
                     student.setRoomNumber("");
                     addToWaitingQueue(student);
                 }
@@ -720,27 +522,19 @@ public class HostelManager {
         }
     }
 
-    /**
-     * Removes duplicate or invalid entries from the waiting list.
-     */
+    // Removes invalid and duplicate waiting entries.
     private void cleanWaitingQueue() {
         Queue<String> oldQueue = waitingQueue;
         waitingQueue = new LinkedList<String>();
         for (String studentId : oldQueue) {
             Student student = findStudent(studentId);
-            // Only keep in waiting list if student exists and has no room yet
             if (student != null && !hasRoom(student) && !isWaiting(studentId)) {
                 waitingQueue.offer(studentId);
             }
         }
     }
 
-    /**
-     * Ensures room capacity, type restrictions, and occupancy limits conform to system standards.
-     * Prevents null values and invalid ranges.
-     *
-     * @param room Room object to normalize
-     */
+    // Applies default room configurations.
     private void normalizeRoom(Room room) {
         if (room.getHostelType() == null || room.getHostelType().trim().isEmpty()) {
             String number = room.getRoomNumber() == null ? "" : room.getRoomNumber().toUpperCase();
@@ -755,13 +549,7 @@ public class HostelManager {
         if (room.getCurrentOccupancy() < 0) room.setCurrentOccupancy(0);
     }
 
-    /**
-     * Decrements the occupancy of the room currently assigned to the student (if any).
-     * Reduces duplicate room deallocation code across various operations.
-     *
-     * @param student The resident student
-     * @return The Room object that was freed, or null if none
-     */
+    // Frees current room by updating occupancy only.
     private Room releaseCurrentRoom(Student student) {
         Room room = findRoom(student.getRoomNumber());
         if (room != null) {
@@ -770,15 +558,7 @@ public class HostelManager {
         return room;
     }
 
-    /**
-     * Finalizes the allocation by setting the bed number, removing the student from the waiting list,
-     * saving the data, and returning the standardized success message.
-     *
-     * @param student The student being allocated
-     * @param newBed  The fully qualified bed code assigned
-     * @param oldBed  The student's previous bed code (if any)
-     * @return Standardized success message detailing allocation or move
-     */
+    // Completes allocation, updating student room, queue and storage.
     private String finalizeAllocation(Student student, String newBed, String oldBed) {
         student.setRoomNumber(newBed);
         waitingQueue.remove(student.getStudentId());
@@ -789,4 +569,3 @@ public class HostelManager {
         return "Bed " + newBed + " allocated successfully.";
     }
 }
-
