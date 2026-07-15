@@ -481,7 +481,7 @@ public class MainFrame extends JFrame {
         for (Room room : manager.getRooms()) {
             model.addRow(new Object[]{room.getRoomNumber(), room.getHostelType(), room.getBlock(), room.getRoomType(),
                     room.getCapacity(), room.getCurrentOccupancy(),
-                    manager.isRoomAvailable(room) ? "Available" : "Full"});
+                    (room.getCapacity() - room.getCurrentOccupancy()) + " of " + room.getCapacity() + " available"});
         }
         card.add(styleAndWrapTable(table), BorderLayout.CENTER);
         
