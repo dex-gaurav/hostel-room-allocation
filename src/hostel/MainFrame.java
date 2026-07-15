@@ -483,6 +483,16 @@ public class MainFrame extends JFrame {
                     room.getCapacity(), room.getCurrentOccupancy(),
                     (room.getCapacity() - room.getCurrentOccupancy()) + " of " + room.getCapacity() + " available"});
         }
+        
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = table.getSelectedRow();
+                if (row >= 0 && e.getClickCount() == 2) {
+                    showRoomDetails(String.valueOf(model.getValueAt(row, 0)));
+                }
+            }
+        });
+
         card.add(styleAndWrapTable(table), BorderLayout.CENTER);
         
         addButton.addActionListener(new ActionListener() {
@@ -544,6 +554,41 @@ public class MainFrame extends JFrame {
         
         showInfo(manager.addRoom(room));
         showRooms();
+    }
+
+    // Renders pop-up window showing occupants (Student ID, Name, Bed) for the clicked room.
+    private void showRoomDetails(String roomNumber) {
+        Room room = manager.findRoom(roomNumber);
+        if (room == null) return;
+        
+        ArrayList<Student> residents = new ArrayList<Student>();
+        for (Student s : manager.getStudents()) {
+            if (s.getRoomNumber() != null && s.getRoomNumber().startsWith(roomNumber + "-")) {
+                residents.add(s);
+            }
+        }
+        
+        if (residents.isEmpty()) {
+            showInfo("No students are currently allocated to room " + roomNumber + ".");
+            return;
+        }
+        
+        DefaultTableModel detailModel = readOnlyModel(new String[]{"Student ID", "Name", "Bed"});
+        for (Student s : residents) {
+            String bed = s.getRoomNumber().substring(s.getRoomNumber().lastIndexOf("-") + 1);
+            detailModel.addRow(new Object[]{s.getStudentId(), s.getName(), bed});
+        }
+        
+        JTable detailTable = new JTable(detailModel);
+        styleTable(detailTable);
+        detailTable.setPreferredScrollableViewportSize(new Dimension(450, 150));
+        
+        JPanel popupPanel = new JPanel(new BorderLayout(0, 10));
+        popupPanel.setOpaque(false);
+        popupPanel.add(new JLabel("Residents for Room: " + roomNumber, SwingConstants.LEFT), BorderLayout.NORTH);
+        popupPanel.add(createScrollPane(detailTable), BorderLayout.CENTER);
+        
+        JOptionPane.showMessageDialog(this, popupPanel, "Room Occupancy Details", JOptionPane.PLAIN_MESSAGE);
     }
 
     // Builds Bed Allocation screen using GridBagLayout and cascading dropdowns.
