@@ -870,64 +870,146 @@ public class MainFrame extends JFrame {
         setupBasePage("Waiting List", "Students are allocated in first-in, first-out order", card);
     }
 
-    // Renders Checkout screen using GridBagLayout to release a resident student's bed.
+    // Renders Checkout screen using a side-by-side search and detail checkout layout.
     // Automatically triggers matching allocations for waiting queue students.
     private void showCheckout() {
-        JPanel card = createCard();
-        card.setLayout(new GridBagLayout());
-        card.setPreferredSize(new Dimension(560, 320));
+        JPanel screen = createScreen("Student Checkout", "Search resident student, view details, and complete checkout");
+        
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        mainPanel.setOpaque(false);
+        
+        // Left Panel: Search Resident Student
+        JPanel leftPanel = createCard();
+        leftPanel.setLayout(new BorderLayout(0, 10));
+        
+        final JTextField searchField = new JTextField();
+        styleInput(searchField);
+        JButton searchButton = primaryButton("Search");
+        
+        JPanel searchBar = new JPanel(new BorderLayout(10, 0));
+        searchBar.setOpaque(false);
+        searchBar.add(searchField, BorderLayout.CENTER);
+        searchBar.add(searchButton, BorderLayout.EAST);
+        leftPanel.add(searchBar, BorderLayout.NORTH);
+        
+        final DefaultTableModel searchModel = readOnlyModel(new String[]{"Student ID", "Name", "Room"});
+        final JTable searchTable = new JTable(searchModel);
+        styleTable(searchTable);
+        
+        // Load initial residents list
+        searchModel.setRowCount(0);
+        for (Student student : manager.getStudents()) {
+            if (manager.hasRoom(student)) {
+                searchModel.addRow(new Object[]{student.getStudentId(), student.getName(), student.getRoomNumber()});
+            }
+        }
+        
+        leftPanel.add(createScrollPane(searchTable), BorderLayout.CENTER);
+        mainPanel.add(leftPanel);
+        
+        // Right Panel: Details & Checkout Option
+        JPanel rightPanel = createCard();
+        rightPanel.setLayout(new GridBagLayout());
         GridBagConstraints c = formConstraints();
         
         c.gridy = 0;
-        card.add(heading("Checkout Details"), c);
+        rightPanel.add(heading("Checkout Details"), c);
         
+        final JLabel nameLabel = new JLabel("Name: -");
+        nameLabel.setFont(NORMAL_FONT);
+        nameLabel.setForeground(TEXT);
         c.gridy = 1;
-        c.insets = new Insets(22, 18, 5, 18);
-        card.add(new JLabel("Select Resident Student"), c);
+        c.insets = new Insets(20, 18, 5, 18);
+        rightPanel.add(nameLabel, c);
         
-        final JComboBox<Student> studentBox = new JComboBox<Student>();
-        for (Student student : manager.getStudents()) {
-            if (manager.hasRoom(student)) studentBox.addItem(student);
-        }
+        final JLabel idLabel = new JLabel("Student ID: -");
+        idLabel.setFont(NORMAL_FONT);
+        idLabel.setForeground(TEXT);
         c.gridy = 2;
-        c.insets = new Insets(5, 18, 12, 18);
-        card.add(studentBox, c);
+        c.insets = new Insets(5, 18, 5, 18);
+        rightPanel.add(idLabel, c);
+        
+        final JLabel genderLabel = new JLabel("Gender: -");
+        genderLabel.setFont(NORMAL_FONT);
+        genderLabel.setForeground(TEXT);
+        c.gridy = 3;
+        c.insets = new Insets(5, 18, 5, 18);
+        rightPanel.add(genderLabel, c);
         
         final JLabel roomLabel = muted("Allocated room: -");
-        c.gridy = 3;
-        c.insets = new Insets(8, 18, 8, 18);
-        card.add(roomLabel, c);
+        c.gridy = 4;
+        c.insets = new Insets(5, 18, 15, 18);
+        rightPanel.add(roomLabel, c);
         
-        ActionListener updateRoom = new ActionListener() {
+        final JButton checkoutButton = primaryButton("Complete Checkout");
+        c.gridy = 5;
+        c.insets = new Insets(20, 18, 8, 18);
+        rightPanel.add(checkoutButton, c);
+        
+        mainPanel.add(rightPanel);
+        
+        final Student[] activeStudent = new Student[1];
+        checkoutButton.setEnabled(false);
+        
+        // Search Action
+        ActionListener searchAction = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                roomLabel.setText(student == null ? "Allocated room: -"
-                        : "Allocated room: " + student.getRoomNumber());
+                String query = searchField.getText().trim().toLowerCase();
+                searchModel.setRowCount(0);
+                for (Student student : manager.getStudents()) {
+                    if (manager.hasRoom(student)) {
+                        if (query.isEmpty()
+                                || student.getStudentId().toLowerCase().contains(query)
+                                || student.getName().toLowerCase().contains(query)) {
+                            searchModel.addRow(new Object[]{student.getStudentId(), student.getName(), student.getRoomNumber()});
+                        }
+                    }
+                }
+                activeStudent[0] = null;
+                nameLabel.setText("Name: -");
+                idLabel.setText("Student ID: -");
+                genderLabel.setText("Gender: -");
+                roomLabel.setText("Allocated room: -");
+                checkoutButton.setEnabled(false);
             }
         };
-        studentBox.addActionListener(updateRoom);
-        updateRoom.actionPerformed(null);
+        searchButton.addActionListener(searchAction);
+        searchField.addActionListener(searchAction);
         
-        JButton checkoutButton = primaryButton("Complete Checkout");
-        c.gridy = 4;
-        c.insets = new Insets(22, 18, 8, 18);
-        card.add(checkoutButton, c);
-        
-        checkoutButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                if (student == null) {
-                    showWarning("There is no resident student to check out.");
-                    return;
-                }
-                if (askConfirm("Check out " + student.getName() + " from room " + student.getRoomNumber() + "?", "Confirm Checkout")) {
-                    showInfo(manager.checkoutStudent(student));
-                    showCheckout();
+        // Row selection list action
+        searchTable.getSelectionModel().addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting()) {
+                    int row = searchTable.getSelectedRow();
+                    if (row >= 0) {
+                        String id = String.valueOf(searchModel.getValueAt(row, 0));
+                        activeStudent[0] = manager.findStudent(id);
+                        if (activeStudent[0] != null) {
+                            nameLabel.setText("Name: " + activeStudent[0].getName());
+                            idLabel.setText("Student ID: " + activeStudent[0].getStudentId());
+                            genderLabel.setText("Gender: " + activeStudent[0].getGender());
+                            roomLabel.setText("Allocated room: " + activeStudent[0].getRoomNumber());
+                            checkoutButton.setEnabled(true);
+                        }
+                    }
                 }
             }
         });
         
-        setupCenteredPage("Student Checkout", "Release a room and process the next waiting student", card);
+        // Checkout Action
+        checkoutButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (activeStudent[0] != null) {
+                    if (askConfirm("Check out " + activeStudent[0].getName() + " from room " + activeStudent[0].getRoomNumber() + "?", "Confirm Checkout")) {
+                        showInfo(manager.checkoutStudent(activeStudent[0]));
+                        showCheckout();
+                    }
+                }
+            }
+        });
+        
+        screen.add(mainPanel, BorderLayout.CENTER);
+        setScreen(screen);
     }
 
     // Renders search screen toolbar and filters results using database query.
