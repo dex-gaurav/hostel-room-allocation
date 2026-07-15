@@ -366,6 +366,15 @@ public class MainFrame extends JFrame {
                 "Department", "Year", "Phone", "Room"});
         final JTable table = new JTable(model);
         fillStudentTable(model, manager.getStudents());
+        
+        table.getColumnModel().getColumn(0).setPreferredWidth(90);  // Student ID
+        table.getColumnModel().getColumn(1).setPreferredWidth(140); // Name
+        table.getColumnModel().getColumn(2).setPreferredWidth(70);  // Gender
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Department
+        table.getColumnModel().getColumn(4).setPreferredWidth(50);  // Year
+        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Phone
+        table.getColumnModel().getColumn(6).setPreferredWidth(180); // Room (Hostel/Bed details)
+
         card.add(styleAndWrapTable(table), BorderLayout.CENTER);
 
         searchButton.addActionListener(new ActionListener() {
@@ -760,6 +769,16 @@ public class MainFrame extends JFrame {
                 "Year", "Phone", "Bed", "Hostel", "Block"});
         JTable table = new JTable(model);
         fillSearchTable(model, "");
+        
+        table.getColumnModel().getColumn(0).setPreferredWidth(90);  // Student ID
+        table.getColumnModel().getColumn(1).setPreferredWidth(130); // Name
+        table.getColumnModel().getColumn(2).setPreferredWidth(70);  // Gender
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Department
+        table.getColumnModel().getColumn(4).setPreferredWidth(50);  // Year
+        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Phone
+        table.getColumnModel().getColumn(6).setPreferredWidth(180); // Bed (Hostel/Bed details)
+        table.getColumnModel().getColumn(7).setPreferredWidth(90);  // Hostel
+        table.getColumnModel().getColumn(8).setPreferredWidth(60);  // Block
         
         searchButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) { fillSearchTable(model, searchField.getText()); }
