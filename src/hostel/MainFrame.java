@@ -591,125 +591,259 @@ public class MainFrame extends JFrame {
         JOptionPane.showMessageDialog(this, popupPanel, "Room Occupancy Details", JOptionPane.PLAIN_MESSAGE);
     }
 
-    // Builds Bed Allocation screen using GridBagLayout and cascading dropdowns.
+    // Builds Bed Allocation screen using a side-by-side search and cascade selector layout.
     // Resolves available beds dynamically based on selected student parameters.
     private void showAllocation() {
-        JPanel card = createCard();
-        card.setLayout(new GridBagLayout());
-        card.setPreferredSize(new Dimension(680, 610));
+        JPanel screen = createScreen("Allocate Room", "Search student, view details, and assign a room manually");
+        
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        mainPanel.setOpaque(false);
+        
+        // Left Panel: Search Student
+        JPanel leftPanel = createCard();
+        leftPanel.setLayout(new BorderLayout(0, 10));
+        
+        final JTextField searchField = new JTextField();
+        styleInput(searchField);
+        JButton searchButton = primaryButton("Search");
+        
+        JPanel searchBar = new JPanel(new BorderLayout(10, 0));
+        searchBar.setOpaque(false);
+        searchBar.add(searchField, BorderLayout.CENTER);
+        searchBar.add(searchButton, BorderLayout.EAST);
+        leftPanel.add(searchBar, BorderLayout.NORTH);
+        
+        final DefaultTableModel searchModel = readOnlyModel(new String[]{"Student ID", "Name", "Gender"});
+        final JTable searchTable = new JTable(searchModel);
+        styleTable(searchTable);
+        
+        // Load initial students list
+        searchModel.setRowCount(0);
+        for (Student student : manager.getStudents()) {
+            searchModel.addRow(new Object[]{student.getStudentId(), student.getName(), student.getGender()});
+        }
+        
+        leftPanel.add(createScrollPane(searchTable), BorderLayout.CENTER);
+        mainPanel.add(leftPanel);
+        
+        // Right Panel: Details & Allocation form
+        JPanel rightPanel = createCard();
+        rightPanel.setLayout(new GridBagLayout());
         GridBagConstraints c = formConstraints();
         
         c.gridy = 0;
-        card.add(heading("Manual Bed Allocation"), c);
-
+        rightPanel.add(heading("Allocation Details"), c);
+        
+        final JLabel nameLabel = new JLabel("Name: -");
+        nameLabel.setFont(NORMAL_FONT);
+        nameLabel.setForeground(TEXT);
         c.gridy = 1;
-        c.insets = new Insets(16, 18, 5, 18);
-        card.add(new JLabel("Select Student"), c);
+        c.insets = new Insets(10, 18, 4, 18);
+        rightPanel.add(nameLabel, c);
         
-        final JComboBox<Student> studentBox = new JComboBox<Student>();
-        for (Student student : manager.getStudents()) studentBox.addItem(student);
+        final JLabel idLabel = new JLabel("Student ID: -");
+        idLabel.setFont(NORMAL_FONT);
+        idLabel.setForeground(TEXT);
         c.gridy = 2;
-        c.insets = new Insets(3, 18, 8, 18);
-        card.add(studentBox, c);
-
+        c.insets = new Insets(4, 18, 4, 18);
+        rightPanel.add(idLabel, c);
+        
+        final JLabel genderLabel = new JLabel("Gender: -");
+        genderLabel.setFont(NORMAL_FONT);
+        genderLabel.setForeground(TEXT);
         c.gridy = 3;
-        c.insets = new Insets(8, 18, 5, 18);
-        card.add(new JLabel("Available Hostel"), c);
+        c.insets = new Insets(4, 18, 4, 18);
+        rightPanel.add(genderLabel, c);
         
-        final JComboBox<String> hostelBox = new JComboBox<String>();
+        final JLabel currentBedLabel = muted("Current bed: -");
         c.gridy = 4;
-        c.insets = new Insets(3, 18, 8, 18);
-        card.add(hostelBox, c);
-
-        c.gridy = 5;
-        c.insets = new Insets(8, 18, 5, 18);
-        card.add(new JLabel("Available Block"), c);
+        c.insets = new Insets(4, 18, 12, 18);
+        rightPanel.add(currentBedLabel, c);
         
-        final JComboBox<String> blockBox = new JComboBox<String>();
+        c.insets = new Insets(8, 18, 3, 18);
+        c.gridy = 5;
+        rightPanel.add(new JLabel("Available Hostel"), c);
+        final JComboBox<String> hostelBox = new JComboBox<String>();
         c.gridy = 6;
         c.insets = new Insets(3, 18, 8, 18);
-        card.add(blockBox, c);
-
-        c.gridy = 7;
-        c.insets = new Insets(8, 18, 5, 18);
-        card.add(new JLabel("Available Room"), c);
+        rightPanel.add(hostelBox, c);
         
-        final JComboBox<Room> roomBox = new JComboBox<Room>();
+        c.gridy = 7;
+        c.insets = new Insets(8, 18, 3, 18);
+        rightPanel.add(new JLabel("Available Block"), c);
+        final JComboBox<String> blockBox = new JComboBox<String>();
         c.gridy = 8;
         c.insets = new Insets(3, 18, 8, 18);
-        card.add(roomBox, c);
-
-        c.gridy = 9;
-        c.insets = new Insets(8, 18, 5, 18);
-        card.add(new JLabel("Available Bed"), c);
+        rightPanel.add(blockBox, c);
         
-        final JComboBox<String> bedBox = new JComboBox<String>();
+        c.gridy = 9;
+        c.insets = new Insets(8, 18, 3, 18);
+        rightPanel.add(new JLabel("Available Room"), c);
+        final JComboBox<Room> roomBox = new JComboBox<Room>();
         c.gridy = 10;
         c.insets = new Insets(3, 18, 8, 18);
-        card.add(bedBox, c);
-
-        final JLabel currentBedLabel = muted("Current bed: -");
+        rightPanel.add(roomBox, c);
+        
         c.gridy = 11;
         c.insets = new Insets(8, 18, 3, 18);
-        card.add(currentBedLabel, c);
-        
-        final JLabel status = muted("Choose a student to view available beds.");
+        rightPanel.add(new JLabel("Available Bed"), c);
+        final JComboBox<String> bedBox = new JComboBox<String>();
         c.gridy = 12;
-        c.insets = new Insets(8, 18, 8, 18);
-        card.add(status, c);
+        c.insets = new Insets(3, 18, 8, 18);
+        rightPanel.add(bedBox, c);
         
-        ActionListener studentChanged = new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                currentBedLabel.setText("Current bed: " + (manager.hasRoom(student) ? student.getRoomNumber() : "Not allocated / waiting"));
-                refreshCascade(student, hostelBox, blockBox, roomBox, bedBox, status, 1);
-            }
-        };
-        ActionListener hostelChanged = new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 2);
-            }
-        };
-        ActionListener blockChanged = new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 3);
-            }
-        };
-        ActionListener roomChanged = new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 4);
-            }
-        };
-        ActionListener bedChanged = new ActionListener() {
-            public void actionPerformed(ActionEvent event) {
-                refreshCascade((Student) studentBox.getSelectedItem(), hostelBox, blockBox, roomBox, bedBox, status, 5);
-            }
-        };
-
-        studentBox.addActionListener(studentChanged);
-        hostelBox.addActionListener(hostelChanged);
-        blockBox.addActionListener(blockChanged);
-        roomBox.addActionListener(roomChanged);
-        bedBox.addActionListener(bedChanged);
-        
-        studentChanged.actionPerformed(null);
-
-        JButton allocateButton = primaryButton("Allocate / Change Bed");
+        final JLabel status = muted("Please select a student from the left table to begin.");
         c.gridy = 13;
-        c.insets = new Insets(18, 18, 8, 18);
-        card.add(allocateButton, c);
+        c.insets = new Insets(8, 18, 8, 18);
+        rightPanel.add(status, c);
         
-        allocateButton.addActionListener(new ActionListener() {
+        final JButton allocateButton = primaryButton("Allocate / Change Bed");
+        c.gridy = 14;
+        c.insets = new Insets(18, 18, 8, 18);
+        rightPanel.add(allocateButton, c);
+        
+        mainPanel.add(rightPanel);
+        
+        final Student[] activeStudent = new Student[1];
+        
+        // Disable layout inputs until a student is clicked
+        hostelBox.setEnabled(false);
+        blockBox.setEnabled(false);
+        roomBox.setEnabled(false);
+        bedBox.setEnabled(false);
+        allocateButton.setEnabled(false);
+        
+        final ActionListener[] hostelListener = new ActionListener[1];
+        final ActionListener[] blockListener = new ActionListener[1];
+        final ActionListener[] roomListener = new ActionListener[1];
+        final ActionListener[] bedListener = new ActionListener[1];
+        
+        hostelListener[0] = new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                Student student = (Student) studentBox.getSelectedItem();
-                Room room = (Room) roomBox.getSelectedItem();
-                String bedLabel = String.valueOf(bedBox.getSelectedItem());
-                showInfo(manager.allocateBed(student, room, bedLabel));
-                showAllocation();
+                if (activeStudent[0] != null) {
+                    refreshCascade(activeStudent[0], hostelBox, blockBox, roomBox, bedBox, status, 2);
+                }
+            }
+        };
+        blockListener[0] = new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (activeStudent[0] != null) {
+                    refreshCascade(activeStudent[0], hostelBox, blockBox, roomBox, bedBox, status, 3);
+                }
+            }
+        };
+        roomListener[0] = new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (activeStudent[0] != null) {
+                    refreshCascade(activeStudent[0], hostelBox, blockBox, roomBox, bedBox, status, 4);
+                }
+            }
+        };
+        bedListener[0] = new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (activeStudent[0] != null) {
+                    refreshCascade(activeStudent[0], hostelBox, blockBox, roomBox, bedBox, status, 5);
+                }
+            }
+        };
+
+        hostelBox.addActionListener(hostelListener[0]);
+        blockBox.addActionListener(blockListener[0]);
+        roomBox.addActionListener(roomListener[0]);
+        bedBox.addActionListener(bedListener[0]);
+
+        // Search Action
+        ActionListener searchAction = new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                String query = searchField.getText().trim().toLowerCase();
+                searchModel.setRowCount(0);
+                for (Student student : manager.getStudents()) {
+                    if (query.isEmpty()
+                            || student.getStudentId().toLowerCase().contains(query)
+                            || student.getName().toLowerCase().contains(query)) {
+                        searchModel.addRow(new Object[]{student.getStudentId(), student.getName(), student.getGender()});
+                    }
+                }
+                activeStudent[0] = null;
+                nameLabel.setText("Name: -");
+                idLabel.setText("Student ID: -");
+                genderLabel.setText("Gender: -");
+                currentBedLabel.setText("Current bed: -");
+                status.setText("Please select a student from the left table to begin.");
+                
+                hostelBox.removeActionListener(hostelListener[0]);
+                blockBox.removeActionListener(blockListener[0]);
+                roomBox.removeActionListener(roomListener[0]);
+                bedBox.removeActionListener(bedListener[0]);
+                hostelBox.removeAllItems();
+                blockBox.removeAllItems();
+                roomBox.removeAllItems();
+                bedBox.removeAllItems();
+                hostelBox.setEnabled(false);
+                blockBox.setEnabled(false);
+                roomBox.setEnabled(false);
+                bedBox.setEnabled(false);
+                allocateButton.setEnabled(false);
+            }
+        };
+        searchButton.addActionListener(searchAction);
+        searchField.addActionListener(searchAction);
+        
+        // Row selection list action
+        searchTable.getSelectionModel().addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting()) {
+                    int row = searchTable.getSelectedRow();
+                    if (row >= 0) {
+                        String id = String.valueOf(searchModel.getValueAt(row, 0));
+                        activeStudent[0] = manager.findStudent(id);
+                        if (activeStudent[0] != null) {
+                            nameLabel.setText("Name: " + activeStudent[0].getName());
+                            idLabel.setText("Student ID: " + activeStudent[0].getStudentId());
+                            genderLabel.setText("Gender: " + activeStudent[0].getGender());
+                            currentBedLabel.setText("Current bed: " + (manager.hasRoom(activeStudent[0]) ? activeStudent[0].getRoomNumber() : "Not allocated / waiting"));
+                            
+                            hostelBox.removeActionListener(hostelListener[0]);
+                            blockBox.removeActionListener(blockListener[0]);
+                            roomBox.removeActionListener(roomListener[0]);
+                            bedBox.removeActionListener(bedListener[0]);
+                            
+                            refreshCascade(activeStudent[0], hostelBox, blockBox, roomBox, bedBox, status, 1);
+                            
+                            hostelBox.addActionListener(hostelListener[0]);
+                            blockBox.addActionListener(blockListener[0]);
+                            roomBox.addActionListener(roomListener[0]);
+                            bedBox.addActionListener(bedListener[0]);
+                            
+                            hostelBox.setEnabled(true);
+                            blockBox.setEnabled(true);
+                            roomBox.setEnabled(true);
+                            bedBox.setEnabled(true);
+                            allocateButton.setEnabled(true);
+                        }
+                    }
+                }
             }
         });
         
-        setupCenteredPage("Allocate Room", "Select hostel, block, room, and bed manually", card);
+        // Allocation button action listener
+        allocateButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (activeStudent[0] != null) {
+                    Room room = (Room) roomBox.getSelectedItem();
+                    String bedLabel = String.valueOf(bedBox.getSelectedItem());
+                    if (room == null || bedLabel == null || bedLabel.trim().isEmpty() || bedLabel.equals("null")) {
+                        showWarning("Please select a valid hostel, block, room, and bed.");
+                        return;
+                    }
+                    showInfo(manager.allocateBed(activeStudent[0], room, bedLabel));
+                    showAllocation();
+                }
+            }
+        });
+
+        screen.add(mainPanel, BorderLayout.CENTER);
+        setScreen(screen);
     }
 
     // Renders the first-in, first-out (FIFO) queued students table.
