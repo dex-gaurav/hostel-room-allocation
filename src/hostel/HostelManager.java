@@ -35,7 +35,7 @@ public class HostelManager {
     // Persistence Layer Integration
     // ==========================================
 
-    // Viva: Data Recovery | Consistency
+    // Responsibility: Data Recovery | Consistency
     // Restores saved hostel data and validates integrity.
     public void loadData() {
         students = FileManager.loadStudents();
@@ -49,7 +49,7 @@ public class HostelManager {
         repairOldDataIfNeeded();
     }
 
-    // Viva: Serialization | File Handling
+    // Responsibility: Serialization | File Handling
     // Persists students, rooms and waiting queue using serialization.
     public void saveData() {
         FileManager.saveStudents(students);
@@ -61,7 +61,7 @@ public class HostelManager {
     // Student Management Operations
     // ==========================================
 
-    // Viva: Validation | ArrayList | Auto Allocation
+    // Responsibility: Validation | ArrayList | Auto Allocation
     // Business Rule: Student ID must be unique.
     // Registers a new student and triggers auto-allocation or waiting queue.
     public String addStudent(Student student) {
@@ -74,7 +74,7 @@ public class HostelManager {
         return "Student added successfully.\n" + allocationMessage;
     }
 
-    // Viva: Room Allocation | Validation
+    // Responsibility: Room Allocation | Validation
     // Re-allocates student if gender details change.
     // Demonstrates reference sharing and status validation.
     public String editStudent(String studentId, String name, String gender,
@@ -105,7 +105,7 @@ public class HostelManager {
         return message;
     }
 
-    // Viva: Room Allocation | FIFO | Waiting List
+    // Responsibility: Room Allocation | FIFO | Waiting List
     // Deletes student, frees bed slot, and allocates freed bed to waiting queue.
     public String deleteStudent(String studentId) {
         Student student = findStudent(studentId);
@@ -121,7 +121,7 @@ public class HostelManager {
         return "Student deleted successfully." + queueMessage;
     }
 
-    // Viva: Linear Search | ArrayList
+    // Responsibility: Linear Search | ArrayList
     // Time: O(n) - Linear search through students matching filter fields.
     public ArrayList<Student> searchStudents(String searchText) {
         ArrayList<Student> results = new ArrayList<Student>();
@@ -144,7 +144,7 @@ public class HostelManager {
     // Room Management Operations
     // ==========================================
 
-    // Viva: Validation | Consistency
+    // Responsibility: Validation | Consistency
     // Business Rule: Room number must be unique.
     // Adds a room and auto-allocates to waiting students.
     public String addRoom(Room room) {
@@ -158,7 +158,7 @@ public class HostelManager {
         return "Room added successfully." + queueMessage;
     }
 
-    // Viva: Validation | Business Rules
+    // Responsibility: Validation | Business Rules
     // Business Rule: Occupied rooms can never be deleted.
     // Removes room configuration only if occupancy is zero.
     public String deleteRoom(String roomNumber) {
@@ -174,7 +174,7 @@ public class HostelManager {
     // Manual Allocation Operations
     // ==========================================
 
-    // Viva: Room Allocation | Relocation
+    // Responsibility: Room Allocation | Relocation
     // Business Rule: Male students -> Boys hostel; Female students -> Girls hostel.
     // Performs auto or manual allocation, handling room-change and waiting list fallbacks.
     public String allocateRoom(Student student, Room room) {
@@ -216,7 +216,7 @@ public class HostelManager {
         return finalizeAllocation(student, bedNumber, oldBed);
     }
 
-    // Viva: Occupancy | Relocation
+    // Responsibility: Occupancy | Relocation
     // Business Rule: Room occupancy can never exceed capacity.
     // Assigns student to a specific bed, updating room occupancy counts.
     public String allocateBed(Student student, Room room, String bedLabel) {
@@ -247,7 +247,7 @@ public class HostelManager {
         return finalizeAllocation(student, newBed, oldBed);
     }
 
-    // Viva: Room Allocation | FIFO | Waiting List
+    // Responsibility: Room Allocation | FIFO | Waiting List
     // Business Rule: Freed beds are immediately offered to waiting students.
     // Releases student's bed and triggers FIFO matching for waiting list.
     public String checkoutStudent(Student student) {
@@ -271,7 +271,7 @@ public class HostelManager {
     // Querying and Helper Utilities
     // ==========================================
 
-    // Viva: Linear Search | OOP
+    // Responsibility: Linear Search | OOP
     // Time: O(n) - Scans student records for matching student ID.
     public Student findStudent(String studentId) {
         for (Student student : students) {
@@ -280,7 +280,7 @@ public class HostelManager {
         return null;
     }
 
-    // Viva: Linear Search | OOP
+    // Responsibility: Linear Search | OOP
     // Time: O(rooms) - Locates room by parsing bed code prefixes.
     public Room findRoom(String roomOrBedNumber) {
         if (roomOrBedNumber == null || roomOrBedNumber.isEmpty()) return null;

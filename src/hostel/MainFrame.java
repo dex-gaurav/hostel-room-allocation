@@ -1060,7 +1060,7 @@ public class MainFrame extends JFrame {
         title.setForeground(BLUE);
         title.setAlignmentX(CENTER_ALIGNMENT);
         
-        JLabel version = muted("Hostel Room Allocation System  •  Version 1.0");
+        JLabel version = muted("Hostel Room Allocation System");
         version.setAlignmentX(CENTER_ALIGNMENT);
         
         card.add(Box.createVerticalGlue());
@@ -1072,7 +1072,7 @@ public class MainFrame extends JFrame {
         card.add(Box.createVerticalStrut(12));
         card.add(infoLine("Storage", "Local serialized .dat files"));
         card.add(Box.createVerticalStrut(12));
-        card.add(infoLine("Purpose", "Second-year B.Tech college project"));
+        card.add(infoLine("Developed By", "Shiro Mani Tripathi, Ananya"));
         card.add(Box.createVerticalStrut(28));
         
         JLabel note = new JLabel("Designed for simple, reliable hostel administration.");
